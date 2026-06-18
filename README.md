@@ -121,8 +121,8 @@ npm run zip
 
 The release artifact is written to:
 
-```text
-.output/browser-bridge-0.1.0-chrome.zip
+```bash
+node -p '`.output/browser-bridge-${require("./package.json").version}-chrome.zip`'
 ```
 
 Before publishing, review:
@@ -136,7 +136,7 @@ Verify the release zip:
 
 ```bash
 cd .output
-sha256sum browser-bridge-0.1.0-chrome.zip > SHA256SUMS
+sha256sum "browser-bridge-$(node -p 'require("../package.json").version')-chrome.zip" > SHA256SUMS
 sha256sum -c SHA256SUMS
 ```
 
