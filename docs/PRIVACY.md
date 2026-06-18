@@ -40,4 +40,8 @@ Cookie restore diagnostics classify domain results into user-facing outcomes suc
 
 ## Contact
 
-This project is currently a local development build. Add project owner contact details before publishing to any extension store.
+For support, use GitHub issues:
+<https://github.com/commit3296/browser-bridge/issues>
+
+For vulnerabilities, use GitHub private advisories:
+<https://github.com/commit3296/browser-bridge/security/advisories/new>

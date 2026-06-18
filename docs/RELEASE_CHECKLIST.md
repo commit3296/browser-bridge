@@ -61,11 +61,14 @@
 
 ## Release screenshots
 
-- Guided export.
-- Guided import preview.
-- Dry-run report.
-- Domain health report.
-- Permissions/trust copy.
+- Generate store screenshots with `npm run screenshots:store`.
+- Confirm screenshot dimensions are `1280x800`.
+- Inspect `docs/store-assets/screenshots/01-export-cookies.png`.
+- Inspect `docs/store-assets/screenshots/02-import-preview.png`.
+- Inspect `docs/store-assets/screenshots/03-restore-report.png`.
+- Keep `docs/store-assets/screenshots/04-no-data-selected.png` as optional QA evidence unless the store listing needs an empty-state screenshot.
+- Confirm screenshots do not show QA diagnostics, cookie values, or revealed archive passwords.
+- Confirm trust copy is visible in the export screenshot.
 
 ## GitHub release
 
@@ -75,3 +78,4 @@
 - Run `sha256sum -c SHA256SUMS`.
 - Load the unpacked `.output/chrome-mv3` build in a clean Chrome profile.
 - Attach final screenshots and release notes from `CHANGELOG.md`.
+- Review [STORE_SUBMISSION.md](STORE_SUBMISSION.md) before Chrome Web Store upload.
