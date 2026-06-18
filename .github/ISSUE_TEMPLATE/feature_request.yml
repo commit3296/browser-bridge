@@ -1,0 +1,46 @@
+name: Feature request
+description: Suggest an improvement for Browser Bridge
+title: "[feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user or release problem does this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: What should Browser Bridge do?
+    validations:
+      required: true
+  - type: dropdown
+    id: sensitive_area
+    attributes:
+      label: Sensitive area touched
+      options:
+        - Cookies / sessions
+        - Archive encryption
+        - Permissions
+        - Destructive import behavior
+        - UI only
+        - Documentation only
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Safety considerations
+      description: Could this expose cookie values, archive passwords, decrypted payloads, or delete unrelated browser data?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false

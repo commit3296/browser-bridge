@@ -1,0 +1,49 @@
+name: Audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - package.json
+      - package-lock.json
+      - .github/workflows/audit.yml
+  pull_request:
+    paths:
+      - package.json
+      - package-lock.json
+      - .github/workflows/audit.yml
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  npm-audit:
+    name: production dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev
+
+      - name: Record dev-tooling audit policy
+        run: |
+          {
+            echo "## Dependency audit policy"
+            echo
+            echo "- Release gate: \`npm audit --omit=dev\`."
+            echo "- Full \`npm audit\` currently includes documented WXT dev-tooling findings."
+            echo "- See \`docs/DEPENDENCY_AUDIT.md\` before release."
+          } >> "$GITHUB_STEP_SUMMARY"

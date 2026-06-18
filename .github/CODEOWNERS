@@ -1,0 +1,19 @@
+# Replace @commit3296 if the public repository is published under a different owner.
+* @commit3296
+
+# Security-sensitive automation and release surfaces.
+/.github/ @commit3296
+/package.json @commit3296
+/package-lock.json @commit3296
+/wxt.config.ts @commit3296
+
+# Sensitive browser-data handling.
+/src/shared/crypto.ts @commit3296
+/src/shared/cookies.ts @commit3296
+/src/background/ @commit3296
+
+# Public privacy/security commitments.
+/docs/PRIVACY.md @commit3296
+/docs/THREAT_MODEL.md @commit3296
+/docs/PERMISSIONS.md @commit3296
+/SECURITY.md @commit3296

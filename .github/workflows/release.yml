@@ -1,0 +1,65 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  chrome:
+    name: Chrome release artifact
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build:chrome
+      - run: npx playwright install chromium --with-deps
+      - run: xvfb-run --auto-servernum npm run test:e2e
+      - run: npm audit --omit=dev
+      - run: npm run zip
+
+      - name: Generate checksums
+        run: |
+          cd .output
+          sha256sum browser-bridge-0.1.0-chrome.zip > SHA256SUMS
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: browser-bridge-chrome-release
+          path: |
+            .output/browser-bridge-0.1.0-chrome.zip
+            .output/SHA256SUMS
+          if-no-files-found: error
+
+      - name: Attach assets to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1 || \
+            gh release create "${GITHUB_REF_NAME}" \
+              --title "${GITHUB_REF_NAME}" \
+              --notes-file CHANGELOG.md
+          gh release upload "${GITHUB_REF_NAME}" \
+            .output/browser-bridge-0.1.0-chrome.zip \
+            .output/SHA256SUMS \
+            --clobber

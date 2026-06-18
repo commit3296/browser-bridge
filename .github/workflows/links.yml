@@ -1,0 +1,39 @@
+name: Links
+
+on:
+  pull_request:
+    paths:
+      - README.md
+      - docs/**/*.md
+      - lychee.toml
+      - .github/workflows/links.yml
+  schedule:
+    - cron: "0 4 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  lychee:
+    name: markdown link check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/cache@v4
+        with:
+          path: .lycheecache
+          key: cache-lychee-${{ github.sha }}
+          restore-keys: cache-lychee-
+
+      - uses: lycheeverse/lychee-action@v2
+        with:
+          args: README.md 'docs/**/*.md'
+          fail: true
+          jobSummary: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

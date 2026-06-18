@@ -1,0 +1,30 @@
+cache = true
+max_cache_age = "7d"
+no_progress = true
+max_retries = 2
+retry_wait_time = 3
+timeout = 20
+
+exclude_path = [
+  ".output/",
+  ".wxt/",
+  "node_modules/",
+  "playwright-report/",
+  "test-results/",
+]
+
+exclude = [
+  "^chrome://",
+  "^edge://",
+  "^brave://",
+  "^vivaldi://",
+  "^opera://",
+  "^file://",
+  "^https://github\\.com/OWNER/browser-bridge",
+  "^https://chrome\\.google\\.com/",
+  "^https://chromewebstore\\.google\\.com/",
+  "^https://img\\.shields\\.io/",
+]
+
+accept = ["200..=299", "301", "302", "308", "403", "429"]
+user_agent = "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0"
