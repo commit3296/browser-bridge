@@ -264,7 +264,7 @@ function createMockBrowser({
 } = {}) {
   const browser: BridgeBrowser = {
     bookmarks: {
-      create: vi.fn(async () => ({ id: "created", title: "created" })),
+      create: vi.fn(async () => ({ id: "created", title: "created", syncing: false })),
       getTree: vi.fn(async () => []),
     },
     cookies: {

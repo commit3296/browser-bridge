@@ -28,6 +28,7 @@ const BookmarkNodeSchema: z.ZodType<chrome.bookmarks.BookmarkTreeNode> = z.lazy(
       index: z.number().optional(),
       url: z.string().optional(),
       title: z.string(),
+      syncing: z.boolean().default(false),
       dateAdded: z.number().optional(),
       dateGroupModified: z.number().optional(),
       unmodifiable: z.literal("managed").optional(),

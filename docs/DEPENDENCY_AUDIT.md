@@ -22,7 +22,9 @@ This checks production dependencies included in the extension runtime. It must p
 
 As of this release prep, `wxt` and `@wxt-dev/module-react` are already on their latest published versions. These findings affect local development/test tooling rather than extension runtime code. Track upstream updates and re-run the full audit before public announcements.
 
-Dependabot PR #5 updates the dev-tooling group, but it is intentionally not merged as an automatic release-hardening update because the newer `@types/chrome` package changes the `chrome.bookmarks.BookmarkTreeNode` type surface by requiring `syncing`. That migration should be handled in a focused follow-up with schema and test fixture updates.
+The `@types/chrome` update required a focused compatibility migration because `chrome.bookmarks.BookmarkTreeNode.syncing` is required in newer type definitions. Older encrypted v2 bookmark payloads remain valid; schema validation defaults missing `syncing` metadata to `false`.
+
+Tailwind CSS remains pinned to the latest 3.x release in this phase. The Tailwind 4 PostCSS migration caused side panel visual QA regressions and should be handled as a dedicated UI migration with screenshot review.
 
 The security operations process is documented in `docs/SECURITY_OPERATIONS.md`.
 
