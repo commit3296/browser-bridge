@@ -4,15 +4,21 @@ All notable changes to Browser Bridge are documented here.
 
 ## Unreleased
 
+## 0.1.5 - 2026-06-19
+
 ### Changed
 
 - Default side panel export selection now starts with cookies only; bookmarks and extension inventory are opt-in.
 - Removed the guided step indicator from the side panel export/import flow.
-- Added password generation and password visibility controls to the side panel password field.
+- Added password generation, copy, and visibility controls to the side panel password field.
+- Stabilized CI/release e2e execution by using a resolved system Chrome executable and the already-built extension output.
 
 ### Fixed
 
 - Disabled export when no data type is selected and renamed the primary export action to `Export` with an icon.
+- Disabled import preview until an archive, password, and selected data type are present.
+- Disabled restore when preview is missing or no data type is selected.
+- Added clearer no-cookie and no-selection empty-state messages.
 
 ## 0.1.4 - 2026-06-18
 

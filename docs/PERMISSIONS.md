@@ -8,7 +8,7 @@ Used to read the bookmark tree during export and create imported bookmark folder
 
 ## `cookies`
 
-Used to read cookies for export and recreate cookies during import. Cookie values are encrypted inside the local archive and are never displayed in the UI. The simple export flow selects all detected cookie domains by default and requires explicit acknowledgement before creating an all-domain cookie archive.
+Used to read cookies for export and recreate cookies during import. Cookie values are encrypted inside the local archive and are never displayed in the UI. The simple export flow selects cookies by default, selects all detected cookie domains by default, and requires explicit acknowledgement before creating an all-domain cookie archive.
 
 ## `<all_urls>`
 
@@ -20,7 +20,7 @@ Used only for the Open Tabs preset in the cookie domain picker. Browser Bridge r
 
 ## `management`
 
-Used to export an installed extension inventory. Browser Bridge does not install, enable, disable, or remove extensions.
+Used only when the user opts into exporting an installed extension inventory. Browser Bridge does not install, enable, disable, or remove extensions.
 
 ## `sidePanel`
 
@@ -29,6 +29,8 @@ Used to show the main Browser Bridge control panel in Chrome's side panel.
 ## No Remote Transfer
 
 Browser Bridge does not send bookmarks, cookies, extension inventory, archives, or passwords to any server.
+
+Generated archive passwords are local UI state only. Copy and view controls do not upload, log, or store the password.
 
 ## Diagnostics And Reports
 

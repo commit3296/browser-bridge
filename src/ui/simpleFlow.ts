@@ -74,34 +74,92 @@ export function getExportActionState({
       (needsAllDomainAcknowledgement && !allDomainAcknowledged),
     disabledReason: !hasDataToExport
       ? "Select at least one data type to export."
-      : sections.cookies && selectedDomains === 0
-        ? "Select at least one cookie domain or disable cookies."
-        : !hasPassword
-          ? "Enter a password for the encrypted archive."
-          : needsAllDomainAcknowledgement && !allDomainAcknowledged
-            ? "Confirm that you understand the encrypted cookie archive can keep websites signed in."
-            : "",
+      : sections.cookies && totalDomains === 0
+        ? "Open the sites you want to transfer, then refresh cookies."
+        : sections.cookies && selectedDomains === 0
+          ? "Select at least one cookie domain or disable cookies."
+          : !hasPassword
+            ? "Enter a password for the encrypted archive."
+            : needsAllDomainAcknowledgement && !allDomainAcknowledged
+              ? "Confirm that you understand the encrypted cookie archive can keep websites signed in."
+              : "",
     needsAllDomainAcknowledgement,
   };
 }
 
+export function getPreviewActionState({
+  hasArchive,
+  hasPassword,
+  isBusy,
+  sections,
+}: {
+  hasArchive: boolean;
+  hasPassword: boolean;
+  isBusy: boolean;
+  sections: SectionSelection;
+}) {
+  const hasDataToPreview = hasSelectedSection(sections);
+
+  return {
+    label: "Preview cookies",
+    disabled: isBusy || !hasArchive || !hasPassword || !hasDataToPreview,
+    disabledReason: !hasArchive
+      ? "Choose an encrypted archive to preview."
+      : !hasPassword
+        ? "Enter the archive password."
+        : !hasDataToPreview
+          ? "Select at least one data type to preview."
+          : "",
+  };
+}
+
+export function getPasswordCopyState({
+  copied,
+  hasPassword,
+  isBusy,
+}: {
+  copied: boolean;
+  hasPassword: boolean;
+  isBusy: boolean;
+}) {
+  return {
+    label: copied ? "Copied" : "Copy password",
+    disabled: isBusy || !hasPassword,
+  };
+}
+
 export function getImportActionState({
+  hasPassword,
   hasPreview,
   isBusy,
   policy,
   replaceAcknowledged,
+  sections,
 }: {
+  hasPassword: boolean;
   hasPreview: boolean;
   isBusy: boolean;
   policy: CookieImportPolicy;
   replaceAcknowledged: boolean;
+  sections: SectionSelection;
 }) {
+  const hasDataToRestore = hasSelectedSection(sections);
+  const needsReplaceAcknowledgement =
+    policy === "replace_selected_domains" && !replaceAcknowledged;
+
   return {
     label: policy === "dry_run" ? "Run dry run" : "Restore cookies",
     disabled:
-      isBusy ||
-      !hasPreview ||
-      (policy === "replace_selected_domains" && !replaceAcknowledged),
+      isBusy || !hasPreview || !hasDataToRestore || !hasPassword || needsReplaceAcknowledgement,
+    disabledReason: !hasDataToRestore
+      ? "Select at least one data type to restore."
+      : !hasPreview
+        ? "Preview the archive before restoring cookies."
+        : !hasPassword
+          ? "Enter the archive password."
+          : needsReplaceAcknowledgement
+            ? "Confirm replace mode before deleting selected-domain cookies."
+            : "",
   };
 }
 

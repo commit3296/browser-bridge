@@ -9,14 +9,15 @@
 
 Browser Bridge is a Chrome-first cookie transfer extension for moving website cookies between browser profiles through a local encrypted archive.
 
-It is built for controlled profile-to-profile transfers: export cookies from one Chromium-family browser profile, move the encrypted archive file yourself, then import it into another profile. Bookmarks and an extension list can be included with the same archive.
+It is built for controlled profile-to-profile transfers: export cookies from one Chromium-family browser profile, move the encrypted archive file yourself, then import it into another profile. Cookies are selected by default; bookmarks and an extension list are opt-in.
 
 ## Features
 
-- Cookie-first side panel flow with advanced controls.
+- Compact cookie-first side panel flow with advanced controls and no stepper.
 - Popup launcher for quick access.
 - Password-encrypted schema v2 archives using PBKDF2-SHA-256 and AES-GCM.
-- All-domain cookies export by default, with explicit encrypted-file acknowledgement.
+- All-domain cookie export by default, with explicit encrypted-file acknowledgement.
+- Generated archive password controls with hidden-by-default password field, copy, and view actions.
 - Domain-scoped cookie review and import through the Chrome cookies API.
 - Optional bookmarks export/import.
 - Cookie import policies:
@@ -49,6 +50,7 @@ Cookies can contain active session secrets. Browser Bridge treats them as sensit
 - cookie values are encrypted inside the archive;
 - cookie values are never displayed in preview, diagnostics, screenshots, or downloaded reports;
 - archive passwords are used only in memory and are not stored;
+- generated passwords can be copied or viewed locally, but are not logged or revealed automatically;
 - default import restores matching cookies without deleting unrelated browser data;
 - all-domain cookie export requires explicit in-app acknowledgement;
 - destructive replacement is limited to selected domains and requires confirmation.
@@ -112,6 +114,8 @@ xvfb-run --auto-servernum npm run test:e2e
 ```
 
 Playwright extension QA uses bundled Chromium by default. Set `PLAYWRIGHT_CHROME_EXECUTABLE=/path/to/browser` only for explicit local browser experiments.
+
+CI resolves an unbranded Chromium executable and runs `npm run test:e2e:built` after `npm run build:chrome`. If the runner does not already provide Chromium, CI installs Playwright Chromium without the slower `--with-deps` path.
 
 ## Release
 
