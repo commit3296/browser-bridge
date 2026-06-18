@@ -2,6 +2,24 @@
 
 All notable changes to Browser Bridge are documented here.
 
+## 0.1.1 - 2026-06-18
+
+### Changed
+
+- Updated GitHub Actions dependencies for checkout, setup-node, cache, and artifact upload.
+- Updated production UI dependencies: Radix checkbox, lucide-react, and tailwind-merge.
+- Documented current dev-only dependency audit findings and the blocked dev-tooling migration.
+- Made the release workflow derive the Chrome zip name from `package.json` instead of hardcoding `0.1.0`.
+
+### Verified
+
+- `npm run typecheck`
+- `npm test`
+- `npm run build:chrome`
+- `npm run test:e2e`
+- `npm audit --omit=dev`
+- `npm run zip`
+
 ## 0.1.0 - 2026-06-18
 
 ### Added

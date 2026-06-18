@@ -66,7 +66,7 @@ Generate and verify checksum:
 
 ```bash
 cd .output
-sha256sum browser-bridge-0.1.0-chrome.zip > SHA256SUMS
+sha256sum "browser-bridge-$(node -p 'require("../package.json").version')-chrome.zip" > SHA256SUMS
 sha256sum -c SHA256SUMS
 ```
 

@@ -12,7 +12,7 @@
 - Run `npm audit --omit=dev`.
 - Review `docs/DEPENDENCY_AUDIT.md` and confirm unresolved full-audit findings are dev-only.
 - Run `npm run zip`.
-- Generate `SHA256SUMS` with `cd .output && sha256sum browser-bridge-0.1.0-chrome.zip > SHA256SUMS`.
+- Generate `SHA256SUMS` with `cd .output && sha256sum "browser-bridge-$(node -p 'require(\"../package.json\").version')-chrome.zip" > SHA256SUMS`.
 - Verify the checksum with `cd .output && sha256sum -c SHA256SUMS`.
 - Confirm the release workflow uploads the zip and `SHA256SUMS` as artifacts.
 - Manually test export/import in a dedicated Chrome profile.
@@ -69,7 +69,7 @@
 
 ## GitHub release
 
-- Create or push tag `v0.1.0`.
+- Create or push a tag matching the package version, for example `v$(node -p 'require("./package.json").version')`.
 - Confirm `.github/workflows/release.yml` passes.
 - Download the uploaded zip and `SHA256SUMS` artifacts.
 - Run `sha256sum -c SHA256SUMS`.
