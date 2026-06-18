@@ -46,7 +46,7 @@ test("simple cookie-first export requires all-domain acknowledgement", async () 
     const page = await context.newPage();
     await page.goto(`chrome-extension://${extensionId}/sidepanel.html`);
 
-    await expect(page.getByText("Cookie transfer between browser profiles")).toBeVisible();
+    await expect(page.getByText("Cookie transfer")).toBeVisible();
     await expect(page.getByText("Local encrypted file")).toBeVisible();
     await expect(page.getByRole("button", { name: /Export cookies from this browser/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /Import cookies into this browser/ })).toBeVisible();
@@ -101,7 +101,7 @@ for (const viewport of [
 
       await expect(page.getByRole("heading", { name: "Browser Bridge" })).toBeVisible();
       await expect(page.getByText("Step")).toBeVisible();
-      await expect(page.getByText("Cookie transfer between browser profiles")).toBeVisible();
+      await expect(page.getByText("Cookie transfer")).toBeVisible();
       await page.screenshot({
         path: `test-results/sidepanel-export-${viewport.name}.png`,
         fullPage: true,
