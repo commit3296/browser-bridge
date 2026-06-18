@@ -4,6 +4,8 @@ All notable changes to Browser Bridge are documented here.
 
 ## Unreleased
 
+## 0.1.4 - 2026-06-18
+
 ### Changed
 
 - Reworked the side panel into a cookie-first transfer flow with simple defaults and advanced controls.
