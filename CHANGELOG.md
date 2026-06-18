@@ -7,6 +7,8 @@ All notable changes to Browser Bridge are documented here.
 ### Changed
 
 - Added tested dev-only dependency overrides for WXT runner transitive dependencies so full `npm audit` and production audit are both clean.
+- Migrated the UI build from Tailwind CSS 3 to Tailwind CSS 4 with `@tailwindcss/postcss` and CSS-first theme tokens.
+- Tightened the cookie preview table rendering for narrow side panel screenshots.
 
 ## 0.1.2 - 2026-06-18
 
