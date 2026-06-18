@@ -1,7 +1,7 @@
 {
   "name": "browser-bridge",
   "private": true,
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Chrome-first browser migration extension for encrypted bookmarks, cookies, and extension inventory transfers.",
   "license": "MIT",
   "type": "module",
@@ -32,6 +32,7 @@
     "typecheck": "wxt prepare && tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "npm run build:chrome && playwright test",
+    "test:e2e:built": "playwright test",
     "test:e2e:headed": "BROWSER_BRIDGE_E2E_HEADED=1 npm run test:e2e",
     "qa:chrome": "BROWSER_BRIDGE_E2E_HEADED=1 npm run test:e2e"
   },

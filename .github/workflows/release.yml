@@ -32,8 +32,16 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build:chrome
-      - run: npx playwright install chromium --with-deps
-      - run: xvfb-run --auto-servernum npm run test:e2e
+      - name: Resolve Chrome executable
+        run: |
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          if [ -z "$CHROME" ]; then
+            echo "::error::No system Chrome executable found. Expected google-chrome, google-chrome-stable, chromium, or chromium-browser."
+            exit 1
+          fi
+          echo "PLAYWRIGHT_CHROME_EXECUTABLE=$CHROME" >> "$GITHUB_ENV"
+          "$CHROME" --version
+      - run: xvfb-run --auto-servernum npm run test:e2e:built
       - run: npm audit --omit=dev
       - run: npm run zip
 

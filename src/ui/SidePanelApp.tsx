@@ -3,6 +3,8 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   CloudOff,
+  Check,
+  Copy,
   Eye,
   EyeOff,
   FileJson,
@@ -51,6 +53,8 @@ import { CookieDomainSummary, ArchivePreview } from "../shared/types";
 import {
   getExportActionState,
   getImportActionState,
+  getPasswordCopyState,
+  getPreviewActionState,
   hasSelectedSection,
   requiresAllDomainCookieAcknowledgement,
   summarizeCookieTransfer,
@@ -68,6 +72,7 @@ export function SidePanelApp() {
     useState<CookieImportPolicy>(defaultCookieImportPolicy);
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [passwordCopied, setPasswordCopied] = useState(false);
   const [busy, setBusy] = useState<BusyState>("idle");
   const [error, setError] = useState("");
   const [progress, setProgress] = useState<ProgressEvent | null>(null);
@@ -83,6 +88,7 @@ export function SidePanelApp() {
   );
   const operationIdRef = useRef(createOperationId());
   const fileRef = useRef<HTMLInputElement>(null);
+  const passwordCopyTimeoutRef = useRef<number | null>(null);
 
   const isBusy = busy !== "idle";
   const importDomains = useMemo(
@@ -116,11 +122,30 @@ export function SidePanelApp() {
     totalDomains: visibleDomains.length,
   });
   const importAction = getImportActionState({
+    hasPassword: Boolean(password),
     hasPreview: Boolean(lastPreview),
     isBusy,
     policy: cookieImportPolicy,
     replaceAcknowledged: replaceImportAcknowledged,
+    sections,
   });
+  const previewAction = getPreviewActionState({
+    hasArchive: Boolean(archive),
+    hasPassword: Boolean(password),
+    isBusy,
+    sections,
+  });
+  const passwordCopyAction = getPasswordCopyState({
+    copied: passwordCopied,
+    hasPassword: Boolean(password),
+    isBusy,
+  });
+  const importDisabledReason =
+    mode === "import"
+      ? lastPreview
+        ? importAction.disabledReason
+        : previewAction.disabledReason || importAction.disabledReason
+      : "";
   const showQaDiagnostics =
     import.meta.env.DEV || new URLSearchParams(window.location.search).get("qa") === "1";
   const showStandaloneCookieWarning =
@@ -136,6 +161,15 @@ export function SidePanelApp() {
     void refreshDomains();
     return () => browser.runtime.onMessage.removeListener(listener);
   }, []);
+
+  useEffect(
+    () => () => {
+      if (passwordCopyTimeoutRef.current !== null) {
+        window.clearTimeout(passwordCopyTimeoutRef.current);
+      }
+    },
+    [],
+  );
 
   async function refreshDomains() {
     setBusy("loading-domains");
@@ -187,7 +221,11 @@ export function SidePanelApp() {
       return;
     }
     if (sections.cookies && selectedDomains.length === 0) {
-      setError("Select at least one cookie domain or disable cookies.");
+      setError(
+        visibleDomains.length === 0
+          ? "Open the sites you want to transfer, then refresh cookies."
+          : "Select at least one cookie domain or disable cookies.",
+      );
       return;
     }
     if (needsAllDomainExportAcknowledgement && !allDomainExportAcknowledged) {
@@ -217,6 +255,7 @@ export function SidePanelApp() {
       downloadArchive(response.archive);
       setPassword("");
       setPasswordVisible(false);
+      setPasswordCopied(false);
       setAllDomainExportAcknowledged(false);
     } catch (exportError) {
       setError(getErrorMessage(exportError));
@@ -236,6 +275,7 @@ export function SidePanelApp() {
       setArchive(await readArchiveFile(file));
       setArchiveName(file.name);
       setPasswordVisible(false);
+      setPasswordCopied(false);
       setReplaceImportAcknowledged(false);
       setDomainReviewOpen(false);
       setMode("import");
@@ -254,11 +294,15 @@ export function SidePanelApp() {
 
   async function previewArchive(policy: CookieImportPolicy) {
     if (!archive) {
-      fileRef.current?.click();
+      setError("Choose an encrypted archive to preview.");
       return;
     }
     if (!password) {
       setError("Enter the archive password.");
+      return;
+    }
+    if (!hasSelectedSection(sections)) {
+      setError("Select at least one data type to preview.");
       return;
     }
 
@@ -313,8 +357,20 @@ export function SidePanelApp() {
   }
 
   async function handleImport() {
-    if (!archive || !lastPreview) {
-      await handlePreview();
+    if (!hasSelectedSection(sections)) {
+      setError("Select at least one data type to restore.");
+      return;
+    }
+    if (!archive) {
+      setError("Choose an encrypted archive to preview.");
+      return;
+    }
+    if (!password) {
+      setError("Enter the archive password.");
+      return;
+    }
+    if (!lastPreview) {
+      setError("Preview the archive before restoring cookies.");
       return;
     }
 
@@ -349,6 +405,7 @@ export function SidePanelApp() {
       setReport(response.report);
       setPassword("");
       setPasswordVisible(false);
+      setPasswordCopied(false);
     } catch (importError) {
       setError(getErrorMessage(importError));
     } finally {
@@ -366,7 +423,26 @@ export function SidePanelApp() {
   function handleGeneratePassword() {
     setPassword(generateStrongPassword());
     setPasswordVisible(false);
+    setPasswordCopied(false);
     setError("");
+  }
+
+  async function handleCopyPassword() {
+    if (!password) return;
+    try {
+      await navigator.clipboard.writeText(password);
+      setPasswordCopied(true);
+      setError("");
+      if (passwordCopyTimeoutRef.current !== null) {
+        window.clearTimeout(passwordCopyTimeoutRef.current);
+      }
+      passwordCopyTimeoutRef.current = window.setTimeout(() => {
+        setPasswordCopied(false);
+        passwordCopyTimeoutRef.current = null;
+      }, 2_000);
+    } catch (copyError) {
+      setError(getErrorMessage(copyError));
+    }
   }
 
   return (
@@ -414,6 +490,7 @@ export function SidePanelApp() {
             setReport(null);
             setDomainReviewOpen(false);
             setPasswordVisible(false);
+            setPasswordCopied(false);
             setReplaceImportAcknowledged(false);
           }}
         />
@@ -460,7 +537,10 @@ export function SidePanelApp() {
               placeholder={mode === "export" ? "Password for encrypted archive" : "Archive password"}
               type={passwordVisible ? "text" : "password"}
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                setPasswordCopied(false);
+              }}
             />
             <Button
               aria-label={passwordVisible ? "Hide password" : "Show password"}
@@ -471,6 +551,16 @@ export function SidePanelApp() {
               onClick={() => setPasswordVisible((visible) => !visible)}
             >
               {passwordVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </Button>
+            <Button
+              aria-label={passwordCopyAction.label}
+              disabled={passwordCopyAction.disabled}
+              size="icon"
+              title={passwordCopyAction.label}
+              variant="outline"
+              onClick={handleCopyPassword}
+            >
+              {passwordCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
             </Button>
             {mode === "export" ? (
               <Button
@@ -588,9 +678,14 @@ export function SidePanelApp() {
             {error}
           </div>
         ) : null}
-        {!error && mode === "export" && exportAction.disabledReason ? (
+        {!error && mode === "export" && !lastPreview && exportAction.disabledReason ? (
           <div className="rounded-md border bg-card p-2.5 text-xs leading-4 text-muted-foreground">
             {exportAction.disabledReason}
+          </div>
+        ) : null}
+        {!error && mode === "import" && !report && importDisabledReason ? (
+          <div className="rounded-md border bg-card p-2.5 text-xs leading-4 text-muted-foreground">
+            {importDisabledReason}
           </div>
         ) : null}
       </section>
@@ -603,9 +698,9 @@ export function SidePanelApp() {
           </Button>
         ) : null}
         {mode === "import" ? (
-          <Button className="flex-1" disabled={isBusy} variant="outline" onClick={handlePreview}>
+          <Button className="flex-1" disabled={previewAction.disabled} variant="outline" onClick={handlePreview}>
             {busy === "previewing" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Preview cookies
+            {previewAction.label}
           </Button>
         ) : null}
         <Button
@@ -742,18 +837,16 @@ function PreviewPanel({ advanced, preview }: { advanced: boolean; preview: Archi
 
 function SimpleCookiePreview({ preview }: { preview: ArchivePreview }) {
   if (!preview.sections.cookies) return null;
-  const skipped =
-    preview.cookies.skipExisting +
-    preview.cookies.expired +
-    preview.cookies.invalid +
-    preview.cookies.chromeRejectedRisk;
+  const skipped = preview.cookies.skipExisting;
+  const attention =
+    preview.cookies.expired + preview.cookies.invalid + preview.cookies.chromeRejectedRisk;
 
   return (
     <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
-      <Metric label="New cookies" value={preview.cookies.new} />
-      <Metric label="Will update" value={preview.cookies.overwrite} />
+      <Metric label="New" value={preview.cookies.new} />
+      <Metric label="Update" value={preview.cookies.overwrite} />
       <Metric label="Skipped" value={skipped} />
-      <Metric label="Will delete" value={preview.cookies.toDelete} />
+      <Metric label="Attention" value={attention} />
     </div>
   );
 }

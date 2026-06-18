@@ -44,6 +44,7 @@ test("simple cookie-first export requires all-domain acknowledgement", async () 
 
     const extensionId = await getExtensionId(context, userDataDir);
     const page = await context.newPage();
+    await installClipboardMock(page);
     await page.goto(`chrome-extension://${extensionId}/sidepanel.html`);
 
     await expect(page.getByText("Cookie transfer")).toBeVisible();
@@ -59,14 +60,22 @@ test("simple cookie-first export requires all-domain acknowledgement", async () 
     await page.getByRole("checkbox", { name: "Cookies" }).click();
     await expect(page.getByText("Select at least one data type to export.")).toBeVisible();
     await expect(createArchive).toBeDisabled();
+    await page.screenshot({
+      path: "test-results/sidepanel-no-data-selected.png",
+      fullPage: true,
+    });
     await page.getByRole("checkbox", { name: "Cookies" }).click();
 
     const passwordInput = page.getByPlaceholder("Password for encrypted archive");
     await expect(passwordInput).toHaveAttribute("type", "password");
+    await expect(page.getByRole("button", { name: "Copy password" })).toBeDisabled();
     await page.getByRole("button", { name: "Generate password" }).click();
     await expect(passwordInput).not.toHaveValue("");
     await expect(passwordInput).toHaveAttribute("type", "password");
     await expect(page.getByRole("button", { name: "Show password" })).toBeEnabled();
+    await page.getByRole("button", { name: "Copy password" }).click();
+    await expect(page.getByRole("button", { name: "Copied" })).toBeVisible();
+    await expect(passwordInput).toHaveAttribute("type", "password");
     await expect(createArchive).toBeDisabled();
     await page.getByRole("checkbox", { name: "Confirm encrypted cookie archive risk" }).click();
     await expect(createArchive).toBeEnabled();
@@ -135,16 +144,31 @@ for (const viewport of [
       await writeFile(archivePath, JSON.stringify(archiveResponse.archive, null, 2));
 
       await page.getByRole("button", { name: /Import cookies into this browser/ }).click();
+      await expect(page.getByRole("button", { name: "Preview cookies" })).toBeDisabled();
+      await expect(page.getByText("Choose an encrypted archive to preview.")).toBeVisible();
+      await page.screenshot({
+        path: `test-results/sidepanel-import-empty-${viewport.name}.png`,
+        fullPage: true,
+      });
       await page.locator('input[type="file"]').setInputFiles(archivePath);
+      await expect(page.getByRole("button", { name: "Preview cookies" })).toBeDisabled();
+      await expect(page.getByText("Enter the archive password.")).toBeVisible();
       await page.getByPlaceholder("Archive password").fill(archivePassword);
       await expect(page.getByRole("button", { name: "Restore cookies", exact: true })).toBeDisabled();
       await page.getByRole("button", { name: "Preview cookies" }).click();
       await expect(page.getByRole("columnheader", { name: "Domain" })).toBeVisible();
       await expect(page.getByRole("columnheader", { name: "Overwrite" })).toBeVisible();
+      await expect(page.getByText("New").first()).toBeVisible();
+      await expect(page.getByText("Attention").first()).toBeVisible();
       await page.screenshot({
         path: `test-results/sidepanel-preview-${viewport.name}.png`,
         fullPage: true,
       });
+
+      await page.getByRole("checkbox", { name: "Cookies" }).click();
+      await expect(page.getByText("Select at least one data type to restore.")).toBeVisible();
+      await expect(page.getByRole("button", { name: "Restore cookies", exact: true })).toBeDisabled();
+      await page.getByRole("checkbox", { name: "Cookies" }).click();
 
       await page.getByRole("button", { name: "Replace selected domains" }).click();
       await expect(page.getByText("deletes cookies only for the selected domains")).toBeVisible();
@@ -225,6 +249,21 @@ async function sendMessage(page: Page, message: unknown): Promise<any> {
       }),
     message,
   );
+}
+
+async function installClipboardMock(page: Page) {
+  await page.addInitScript(() => {
+    let copiedText = "";
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        readText: async () => copiedText,
+        writeText: async (value: string) => {
+          copiedText = value;
+        },
+      },
+    });
+  });
 }
 
 function cookieForUrl(url: string, name: string, value: string) {

@@ -5,6 +5,8 @@ import {
   cookieOutcomeLabel,
   getExportActionState,
   getImportActionState,
+  getPasswordCopyState,
+  getPreviewActionState,
   hasSelectedSection,
   requiresAllDomainCookieAcknowledgement,
   summarizeCookieOutcomes,
@@ -104,24 +106,116 @@ describe("simple cookie-first flow", () => {
     });
   });
 
+  it("uses a clear no-cookies export disabled reason", () => {
+    expect(
+      getExportActionState({
+        allDomainAcknowledged: false,
+        hasPassword: true,
+        isBusy: false,
+        sections: { bookmarks: false, cookies: true, extensions: false },
+        selectedDomains: 0,
+        totalDomains: 0,
+      }),
+    ).toMatchObject({
+      disabled: true,
+      disabledReason: "Open the sites you want to transfer, then refresh cookies.",
+    });
+  });
+
+  it("disables import preview until archive, password, and data selection exist", () => {
+    expect(
+      getPreviewActionState({
+        hasArchive: false,
+        hasPassword: false,
+        isBusy: false,
+        sections,
+      }),
+    ).toMatchObject({
+      disabled: true,
+      disabledReason: "Choose an encrypted archive to preview.",
+    });
+
+    expect(
+      getPreviewActionState({
+        hasArchive: true,
+        hasPassword: false,
+        isBusy: false,
+        sections,
+      }),
+    ).toMatchObject({
+      disabled: true,
+      disabledReason: "Enter the archive password.",
+    });
+
+    expect(
+      getPreviewActionState({
+        hasArchive: true,
+        hasPassword: true,
+        isBusy: false,
+        sections: { bookmarks: false, cookies: false, extensions: false },
+      }),
+    ).toMatchObject({
+      disabled: true,
+      disabledReason: "Select at least one data type to preview.",
+    });
+  });
+
+  it("keeps password copy disabled until a password exists", () => {
+    expect(
+      getPasswordCopyState({
+        copied: false,
+        hasPassword: false,
+        isBusy: false,
+      }),
+    ).toEqual({ label: "Copy password", disabled: true });
+
+    expect(
+      getPasswordCopyState({
+        copied: true,
+        hasPassword: true,
+        isBusy: false,
+      }),
+    ).toEqual({ label: "Copied", disabled: false });
+  });
+
   it("keeps import restore disabled until preview succeeds", () => {
     expect(
       getImportActionState({
+        hasPassword: true,
         hasPreview: false,
         isBusy: false,
         policy: "overwrite",
         replaceAcknowledged: false,
+        sections,
       }),
     ).toMatchObject({ label: "Restore cookies", disabled: true });
 
     expect(
       getImportActionState({
+        hasPassword: true,
         hasPreview: true,
         isBusy: false,
         policy: "overwrite",
         replaceAcknowledged: false,
+        sections,
       }),
     ).toMatchObject({ label: "Restore cookies", disabled: false });
+  });
+
+  it("disables import restore when no data type is selected", () => {
+    expect(
+      getImportActionState({
+        hasPassword: true,
+        hasPreview: true,
+        isBusy: false,
+        policy: "overwrite",
+        replaceAcknowledged: false,
+        sections: { bookmarks: false, cookies: false, extensions: false },
+      }),
+    ).toMatchObject({
+      disabled: true,
+      disabledReason: "Select at least one data type to restore.",
+    });
   });
 
   it("uses user-facing cookie outcome labels", () => {
