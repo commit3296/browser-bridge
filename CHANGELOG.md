@@ -4,6 +4,8 @@ All notable changes to Browser Bridge are documented here.
 
 ## Unreleased
 
+## 0.1.3 - 2026-06-18
+
 ### Changed
 
 - Added tested dev-only dependency overrides for WXT runner transitive dependencies so full `npm audit` and production audit are both clean.
