@@ -2,7 +2,7 @@
 
 All notable changes to Browser Bridge are documented here.
 
-## Unreleased
+## 0.1.2 - 2026-06-18
 
 ### Changed
 
