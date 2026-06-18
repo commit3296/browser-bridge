@@ -359,19 +359,31 @@ export function SidePanelApp() {
           <div>
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
               <ShieldCheck className="h-4 w-4 text-primary" />
-              Cookie transfer between browser profiles
+              Cookie transfer
             </div>
             <h1 className="mt-0.5 text-xl font-semibold">Browser Bridge</h1>
           </div>
-          <Button
-            disabled={busy === "loading-domains"}
-            size="icon"
-            title="Refresh domains"
-            variant="outline"
-            onClick={refreshDomains}
-          >
-            <RefreshCw className="h-4 w-4" />
-          </Button>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              aria-label={advancedOpen ? "Hide advanced settings" : "Show advanced settings"}
+              className={advancedOpen ? "border-primary bg-primary/10 text-primary" : ""}
+              size="icon"
+              title={advancedOpen ? "Hide advanced settings" : "Show advanced settings"}
+              variant="outline"
+              onClick={() => setAdvancedOpen((open) => !open)}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+            </Button>
+            <Button
+              disabled={busy === "loading-domains"}
+              size="icon"
+              title="Refresh domains"
+              variant="outline"
+              onClick={refreshDomains}
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         <TrustStrip />
       </header>
@@ -391,7 +403,6 @@ export function SidePanelApp() {
 
       <section className="space-y-4 px-4 py-4">
         <GuidedStatus
-          advancedOpen={advancedOpen}
           archiveSelected={Boolean(archive)}
           archiveSaved={archiveSaved}
           hasPassword={Boolean(password)}
@@ -400,7 +411,6 @@ export function SidePanelApp() {
           mode={mode}
           sections={sections}
           selectedDomains={selectedDomains.length}
-          onAdvancedToggle={() => setAdvancedOpen((open) => !open)}
         />
 
         {mode === "import" ? (
@@ -578,7 +588,6 @@ export function SidePanelApp() {
 }
 
 function GuidedStatus({
-  advancedOpen,
   archiveSelected,
   archiveSaved,
   hasPassword,
@@ -587,9 +596,7 @@ function GuidedStatus({
   mode,
   sections,
   selectedDomains,
-  onAdvancedToggle,
 }: {
-  advancedOpen: boolean;
   archiveSelected: boolean;
   archiveSaved: boolean;
   hasPassword: boolean;
@@ -598,7 +605,6 @@ function GuidedStatus({
   mode: Mode;
   sections: SectionSelection;
   selectedDomains: number;
-  onAdvancedToggle: () => void;
 }) {
   const steps = [
     { label: "Choose action", done: true },
@@ -644,11 +650,6 @@ function GuidedStatus({
           ))}
         </div>
       </div>
-      <Button size="sm" variant="ghost" onClick={onAdvancedToggle}>
-        <SlidersHorizontal className="h-4 w-4" />
-        <span className="hidden sm:inline">{advancedOpen ? "Hide advanced" : "Advanced"}</span>
-        <span className="sm:hidden">Advanced</span>
-      </Button>
     </section>
   );
 }
@@ -686,21 +687,18 @@ function ActionChooser({
     mode: Mode;
     ariaLabel: string;
     title: string;
-    subtitle: string;
     icon: typeof ArrowDownToLine;
   }> = [
     {
       mode: "export",
       ariaLabel: "Export cookies from this browser",
-      title: "Export cookies",
-      subtitle: "From this browser",
+      title: "Export",
       icon: ArrowDownToLine,
     },
     {
       mode: "import",
       ariaLabel: "Import cookies into this browser",
-      title: "Import cookies",
-      subtitle: "Into this browser",
+      title: "Import",
       icon: ArrowUpFromLine,
     },
   ];
@@ -714,21 +712,14 @@ function ActionChooser({
           <button
             key={action.mode}
             aria-label={action.ariaLabel}
-            className={`flex min-h-[54px] cursor-pointer items-center gap-2.5 rounded-md border px-2.5 text-left transition-[background-color,border-color,transform] duration-150 ease-out active:scale-[0.99] ${
+            className={`flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-md border px-3 text-center transition-[background-color,border-color,transform] duration-150 ease-out active:scale-[0.99] ${
               active ? "border-primary bg-primary/10" : "bg-background hover:bg-muted/55"
             }`}
             type="button"
             onClick={() => onChange(action.mode)}
           >
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-card">
-              <Icon className="h-4 w-4 text-primary" />
-            </span>
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold">{action.title}</span>
-              <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                {action.subtitle}
-              </span>
-            </span>
+            <Icon className="h-4 w-4 text-primary" />
+            <span className="truncate text-sm font-semibold">{action.title}</span>
           </button>
         );
       })}
