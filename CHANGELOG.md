@@ -4,6 +4,16 @@ All notable changes to Browser Bridge are documented here.
 
 ## Unreleased
 
+### Changed
+
+- Default side panel export selection now starts with cookies only; bookmarks and extension inventory are opt-in.
+- Removed the guided step indicator from the side panel export/import flow.
+- Added password generation and password visibility controls to the side panel password field.
+
+### Fixed
+
+- Disabled export when no data type is selected and renamed the primary export action to `Export` with an icon.
+
 ## 0.1.4 - 2026-06-18
 
 ### Changed

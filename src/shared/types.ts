@@ -320,9 +320,9 @@ export type BridgeResponse =
   | { ok: false; error: string };
 
 export const defaultSections: SectionSelection = {
-  bookmarks: true,
+  bookmarks: false,
   cookies: true,
-  extensions: true,
+  extensions: false,
 };
 
 export const defaultCookieImportPolicy: CookieImportPolicy = "overwrite";
