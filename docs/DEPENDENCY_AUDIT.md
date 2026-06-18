@@ -12,14 +12,17 @@ This checks production dependencies included in the extension runtime. It must p
 
 ## Dev Tooling Audit
 
-`npm audit` without `--omit=dev` currently reports vulnerabilities through WXT development tooling:
+`npm audit` without `--omit=dev` currently reports vulnerabilities through development tooling:
 
 - `wxt -> web-ext-run -> fx-runner -> shell-quote`
 - `wxt -> web-ext-run -> tmp`
 - `wxt -> web-ext-run -> node-notifier -> uuid`
 - WXT's nested `esbuild`
+- `undici` from development-only tooling dependencies
 
 As of this release prep, `wxt` and `@wxt-dev/module-react` are already on their latest published versions. These findings affect local development/test tooling rather than extension runtime code. Track upstream updates and re-run the full audit before public announcements.
+
+Dependabot PR #5 updates the dev-tooling group, but it is intentionally not merged as an automatic release-hardening update because the newer `@types/chrome` package changes the `chrome.bookmarks.BookmarkTreeNode` type surface by requiring `syncing`. That migration should be handled in a focused follow-up with schema and test fixture updates.
 
 The security operations process is documented in `docs/SECURITY_OPERATIONS.md`.
 
