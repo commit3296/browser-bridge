@@ -38,6 +38,10 @@ export function requiresAllDomainCookieAcknowledgement({
   return sections.cookies && totalDomains > 0 && selectedDomains === totalDomains;
 }
 
+export function hasSelectedSection(sections: SectionSelection) {
+  return sections.bookmarks || sections.cookies || sections.extensions;
+}
+
 export function getExportActionState({
   allDomainAcknowledged,
   hasPassword,
@@ -58,14 +62,25 @@ export function getExportActionState({
     selectedDomains,
     totalDomains,
   });
+  const hasDataToExport = hasSelectedSection(sections);
 
   return {
-    label: "Create encrypted cookie archive",
+    label: "Export",
     disabled:
       isBusy ||
-      !hasPassword ||
+      !hasDataToExport ||
       (sections.cookies && selectedDomains === 0) ||
+      !hasPassword ||
       (needsAllDomainAcknowledgement && !allDomainAcknowledged),
+    disabledReason: !hasDataToExport
+      ? "Select at least one data type to export."
+      : sections.cookies && selectedDomains === 0
+        ? "Select at least one cookie domain or disable cookies."
+        : !hasPassword
+          ? "Enter a password for the encrypted archive."
+          : needsAllDomainAcknowledgement && !allDomainAcknowledged
+            ? "Confirm that you understand the encrypted cookie archive can keep websites signed in."
+            : "",
     needsAllDomainAcknowledgement,
   };
 }

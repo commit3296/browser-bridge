@@ -3,8 +3,10 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   CloudOff,
+  Eye,
   EyeOff,
   FileJson,
+  KeyRound,
   Loader2,
   LockKeyhole,
   SlidersHorizontal,
@@ -36,7 +38,11 @@ import {
 import { CookiePreview } from "./CookiePreview";
 import { DomainPicker } from "./DomainPicker";
 import { ExtensionInventory } from "./ExtensionInventory";
-import { PasswordStrength, getPasswordScore } from "./PasswordStrength";
+import {
+  PasswordStrength,
+  generateStrongPassword,
+  getPasswordScore,
+} from "./PasswordStrength";
 import { ProgressPanel } from "./ProgressPanel";
 import { QaDiagnostics } from "./QaDiagnostics";
 import { ReportView } from "./ReportView";
@@ -45,6 +51,7 @@ import { CookieDomainSummary, ArchivePreview } from "../shared/types";
 import {
   getExportActionState,
   getImportActionState,
+  hasSelectedSection,
   requiresAllDomainCookieAcknowledgement,
   summarizeCookieTransfer,
 } from "./simpleFlow";
@@ -60,6 +67,7 @@ export function SidePanelApp() {
   const [cookieImportPolicy, setCookieImportPolicy] =
     useState<CookieImportPolicy>(defaultCookieImportPolicy);
   const [password, setPassword] = useState("");
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [busy, setBusy] = useState<BusyState>("idle");
   const [error, setError] = useState("");
   const [progress, setProgress] = useState<ProgressEvent | null>(null);
@@ -67,7 +75,6 @@ export function SidePanelApp() {
   const [archive, setArchive] = useState<EncryptedArchiveV2 | null>(null);
   const [archiveName, setArchiveName] = useState("");
   const [report, setReport] = useState<ImportReport | null>(null);
-  const [archiveSaved, setArchiveSaved] = useState(false);
   const [domainReviewOpen, setDomainReviewOpen] = useState(false);
   const [allDomainExportAcknowledged, setAllDomainExportAcknowledged] = useState(false);
   const [replaceImportAcknowledged, setReplaceImportAcknowledged] = useState(false);
@@ -171,6 +178,10 @@ export function SidePanelApp() {
   }
 
   async function handleExport() {
+    if (!hasSelectedSection(sections)) {
+      setError("Select at least one data type to export.");
+      return;
+    }
     if (!password) {
       setError("Enter a password for the encrypted archive.");
       return;
@@ -190,7 +201,6 @@ export function SidePanelApp() {
     setReport(null);
     setLastPreview(null);
     setProgress(null);
-    setArchiveSaved(false);
 
     try {
       const response = await sendBridgeMessage({
@@ -205,8 +215,8 @@ export function SidePanelApp() {
       }
       setLastPreview(response.preview);
       downloadArchive(response.archive);
-      setArchiveSaved(true);
       setPassword("");
+      setPasswordVisible(false);
       setAllDomainExportAcknowledged(false);
     } catch (exportError) {
       setError(getErrorMessage(exportError));
@@ -225,7 +235,7 @@ export function SidePanelApp() {
     try {
       setArchive(await readArchiveFile(file));
       setArchiveName(file.name);
-      setArchiveSaved(false);
+      setPasswordVisible(false);
       setReplaceImportAcknowledged(false);
       setDomainReviewOpen(false);
       setMode("import");
@@ -338,6 +348,7 @@ export function SidePanelApp() {
       }
       setReport(response.report);
       setPassword("");
+      setPasswordVisible(false);
     } catch (importError) {
       setError(getErrorMessage(importError));
     } finally {
@@ -350,6 +361,12 @@ export function SidePanelApp() {
       type: "CANCEL_OPERATION",
       operationId: operationIdRef.current,
     });
+  }
+
+  function handleGeneratePassword() {
+    setPassword(generateStrongPassword());
+    setPasswordVisible(false);
+    setError("");
   }
 
   return (
@@ -396,23 +413,13 @@ export function SidePanelApp() {
             setError("");
             setReport(null);
             setDomainReviewOpen(false);
+            setPasswordVisible(false);
             setReplaceImportAcknowledged(false);
           }}
         />
       </section>
 
       <section className="space-y-4 px-4 py-4">
-        <GuidedStatus
-          archiveSelected={Boolean(archive)}
-          archiveSaved={archiveSaved}
-          hasPassword={Boolean(password)}
-          hasPreview={Boolean(lastPreview)}
-          hasReport={Boolean(report)}
-          mode={mode}
-          sections={sections}
-          selectedDomains={selectedDomains.length}
-        />
-
         {mode === "import" ? (
           <Panel title="Choose archive">
             <input
@@ -446,14 +453,38 @@ export function SidePanelApp() {
         </Panel>
 
         <Panel title="Password">
-          <input
-            className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition-[border-color,box-shadow] duration-150 focus:border-primary focus:ring-2 focus:ring-ring/20"
-            disabled={isBusy}
-            placeholder={mode === "export" ? "Password for encrypted archive" : "Archive password"}
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
+          <div className="flex gap-2">
+            <input
+              className="h-10 min-w-0 flex-1 rounded-md border bg-background px-3 text-sm outline-none transition-[border-color,box-shadow] duration-150 focus:border-primary focus:ring-2 focus:ring-ring/20"
+              disabled={isBusy}
+              placeholder={mode === "export" ? "Password for encrypted archive" : "Archive password"}
+              type={passwordVisible ? "text" : "password"}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+            <Button
+              aria-label={passwordVisible ? "Hide password" : "Show password"}
+              disabled={isBusy || !password}
+              size="icon"
+              title={passwordVisible ? "Hide password" : "Show password"}
+              variant="outline"
+              onClick={() => setPasswordVisible((visible) => !visible)}
+            >
+              {passwordVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </Button>
+            {mode === "export" ? (
+              <Button
+                aria-label="Generate password"
+                disabled={isBusy}
+                size="icon"
+                title="Generate password"
+                variant="outline"
+                onClick={handleGeneratePassword}
+              >
+                <KeyRound className="h-4 w-4" />
+              </Button>
+            ) : null}
+          </div>
           <PasswordStrength password={password} />
           {mode === "export" && sections.cookies && getPasswordScore(password) > 0 && getPasswordScore(password) < 3 ? (
             <div className="mt-2 text-xs text-amber-700">
@@ -557,6 +588,11 @@ export function SidePanelApp() {
             {error}
           </div>
         ) : null}
+        {!error && mode === "export" && exportAction.disabledReason ? (
+          <div className="rounded-md border bg-card p-2.5 text-xs leading-4 text-muted-foreground">
+            {exportAction.disabledReason}
+          </div>
+        ) : null}
       </section>
 
       <footer className="sticky bottom-0 flex gap-2 border-t bg-card/95 px-4 py-3 backdrop-blur">
@@ -579,78 +615,13 @@ export function SidePanelApp() {
         >
           {busy === "exporting" || busy === "importing" ? (
             <Loader2 className="h-4 w-4 animate-spin" />
+          ) : mode === "export" ? (
+            <ArrowDownToLine className="h-4 w-4" />
           ) : null}
           {mode === "export" ? exportAction.label : importAction.label}
         </Button>
       </footer>
     </main>
-  );
-}
-
-function GuidedStatus({
-  archiveSelected,
-  archiveSaved,
-  hasPassword,
-  hasPreview,
-  hasReport,
-  mode,
-  sections,
-  selectedDomains,
-}: {
-  archiveSelected: boolean;
-  archiveSaved: boolean;
-  hasPassword: boolean;
-  hasPreview: boolean;
-  hasReport: boolean;
-  mode: Mode;
-  sections: SectionSelection;
-  selectedDomains: number;
-}) {
-  const steps = [
-    { label: "Choose action", done: true },
-    {
-      label: mode === "export" ? "Choose cookies" : "Choose archive",
-      done: !sections.cookies || selectedDomains > 0,
-    },
-    {
-      label: mode === "export" ? "Password" : "File and password",
-      done: mode === "export" ? hasPassword || archiveSaved : archiveSelected && hasPassword,
-    },
-    {
-      label: mode === "export" ? "Create archive" : "Preview",
-      done: mode === "export" ? archiveSaved : hasPreview || hasReport,
-    },
-    {
-      label: "Report",
-      done: mode === "export" ? archiveSaved : hasReport,
-    },
-  ];
-  const firstIncompleteIndex = steps.findIndex((step) => !step.done);
-  const activeIndex = firstIncompleteIndex === -1 ? steps.length - 1 : firstIncompleteIndex;
-  const activeStep = steps[activeIndex];
-
-  return (
-    <section className="flex min-h-10 items-center gap-2 rounded-md border bg-card px-2.5 py-1.5">
-      <div className="flex min-w-0 flex-1 items-center gap-2">
-        <span className="rounded-sm bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">
-          {mode === "export" ? "Export" : "Import"}
-        </span>
-        <span className="shrink-0 text-xs text-muted-foreground">
-          Step {activeIndex + 1}/{steps.length}
-        </span>
-        <span className="truncate text-xs font-medium">{activeStep.label}</span>
-        <div className="ml-0.5 hidden shrink-0 items-center gap-1 min-[360px]:flex" aria-hidden="true">
-          {steps.map((step, index) => (
-            <span
-              key={step.label}
-              className={`h-1.5 w-1.5 rounded-full ${
-                step.done || index === activeIndex ? "bg-primary" : "bg-muted"
-              }`}
-            />
-          ))}
-        </div>
-      </div>
-    </section>
   );
 }
 

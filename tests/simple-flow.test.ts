@@ -1,15 +1,25 @@
 import { describe, expect, it } from "vitest";
 import { createImportReport } from "../src/shared/reports";
+import { defaultSections } from "../src/shared/types";
 import {
   cookieOutcomeLabel,
   getExportActionState,
   getImportActionState,
+  hasSelectedSection,
   requiresAllDomainCookieAcknowledgement,
   summarizeCookieOutcomes,
 } from "../src/ui/simpleFlow";
 
 describe("simple cookie-first flow", () => {
   const sections = { bookmarks: true, cookies: true, extensions: true };
+
+  it("defaults to cookies only", () => {
+    expect(defaultSections).toEqual({
+      bookmarks: false,
+      cookies: true,
+      extensions: false,
+    });
+  });
 
   it("requires explicit acknowledgement for all-domain cookie export", () => {
     expect(
@@ -40,7 +50,11 @@ describe("simple cookie-first flow", () => {
         selectedDomains: 3,
         totalDomains: 3,
       }),
-    ).toMatchObject({ disabled: false, needsAllDomainAcknowledgement: true });
+    ).toMatchObject({
+      disabled: false,
+      label: "Export",
+      needsAllDomainAcknowledgement: true,
+    });
   });
 
   it("does not require all-domain acknowledgement for a partial cookie selection", () => {
@@ -51,6 +65,43 @@ describe("simple cookie-first flow", () => {
         totalDomains: 3,
       }),
     ).toBe(false);
+  });
+
+  it("disables export when no section is selected", () => {
+    const noSections = { bookmarks: false, cookies: false, extensions: false };
+
+    expect(hasSelectedSection(noSections)).toBe(false);
+    expect(
+      getExportActionState({
+        allDomainAcknowledged: false,
+        hasPassword: true,
+        isBusy: false,
+        sections: noSections,
+        selectedDomains: 0,
+        totalDomains: 3,
+      }),
+    ).toMatchObject({
+      disabled: true,
+      disabledReason: "Select at least one data type to export.",
+      label: "Export",
+    });
+  });
+
+  it("allows explicit non-cookie exports", () => {
+    expect(
+      getExportActionState({
+        allDomainAcknowledged: false,
+        hasPassword: true,
+        isBusy: false,
+        sections: { bookmarks: true, cookies: false, extensions: false },
+        selectedDomains: 0,
+        totalDomains: 3,
+      }),
+    ).toMatchObject({
+      disabled: false,
+      disabledReason: "",
+      label: "Export",
+    });
   });
 
   it("keeps import restore disabled until preview succeeds", () => {

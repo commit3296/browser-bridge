@@ -50,10 +50,23 @@ test("simple cookie-first export requires all-domain acknowledgement", async () 
     await expect(page.getByText("Local encrypted file")).toBeVisible();
     await expect(page.getByRole("button", { name: /Export cookies from this browser/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /Import cookies into this browser/ })).toBeVisible();
+    await expect(page.getByRole("checkbox", { name: "Cookies" })).toBeChecked();
+    await expect(page.getByRole("checkbox", { name: "Also include bookmarks" })).not.toBeChecked();
+    await expect(page.getByRole("checkbox", { name: "Also include extension list" })).not.toBeChecked();
     await expect(page.getByText("I understand this encrypted file may keep me signed in")).toBeVisible();
 
-    const createArchive = page.getByRole("button", { name: "Create encrypted cookie archive" });
-    await page.getByPlaceholder("Password for encrypted archive").fill(archivePassword);
+    const createArchive = page.getByRole("button", { name: "Export", exact: true });
+    await page.getByRole("checkbox", { name: "Cookies" }).click();
+    await expect(page.getByText("Select at least one data type to export.")).toBeVisible();
+    await expect(createArchive).toBeDisabled();
+    await page.getByRole("checkbox", { name: "Cookies" }).click();
+
+    const passwordInput = page.getByPlaceholder("Password for encrypted archive");
+    await expect(passwordInput).toHaveAttribute("type", "password");
+    await page.getByRole("button", { name: "Generate password" }).click();
+    await expect(passwordInput).not.toHaveValue("");
+    await expect(passwordInput).toHaveAttribute("type", "password");
+    await expect(page.getByRole("button", { name: "Show password" })).toBeEnabled();
     await expect(createArchive).toBeDisabled();
     await page.getByRole("checkbox", { name: "Confirm encrypted cookie archive risk" }).click();
     await expect(createArchive).toBeEnabled();
@@ -100,7 +113,7 @@ for (const viewport of [
       await page.goto(`chrome-extension://${extensionId}/sidepanel.html?qa=1`);
 
       await expect(page.getByRole("heading", { name: "Browser Bridge" })).toBeVisible();
-      await expect(page.getByText("Step")).toBeVisible();
+      await expect(page.getByText(/Step \d/)).toHaveCount(0);
       await expect(page.getByText("Cookie transfer")).toBeVisible();
       await page.screenshot({
         path: `test-results/sidepanel-export-${viewport.name}.png`,
