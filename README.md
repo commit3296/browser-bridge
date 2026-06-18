@@ -115,7 +115,7 @@ xvfb-run --auto-servernum npm run test:e2e
 
 Playwright extension QA uses bundled Chromium by default. Set `PLAYWRIGHT_CHROME_EXECUTABLE=/path/to/browser` only for explicit local browser experiments.
 
-CI resolves a system Chrome executable and runs `npm run test:e2e:built` after `npm run build:chrome` so GitHub Actions does not reinstall Playwright browsers during every release gate.
+CI resolves an unbranded Chromium executable and runs `npm run test:e2e:built` after `npm run build:chrome`. If the runner does not already provide Chromium, CI installs Playwright Chromium without the slower `--with-deps` path.
 
 ## Release
 

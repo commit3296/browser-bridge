@@ -33,12 +33,12 @@ jobs:
       - run: npm run build:chrome
       - run: npm run build:edge
       - run: npm run build:firefox
-      - name: Resolve Chrome executable
+      - name: Resolve extension test browser
         run: |
-          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          CHROME="$(command -v chromium || command -v chromium-browser || true)"
           if [ -z "$CHROME" ]; then
-            echo "::error::No system Chrome executable found. Expected google-chrome, google-chrome-stable, chromium, or chromium-browser."
-            exit 1
+            npx playwright install chromium
+            CHROME="$(node -e "const { chromium } = require('playwright'); process.stdout.write(chromium.executablePath())")"
           fi
           echo "PLAYWRIGHT_CHROME_EXECUTABLE=$CHROME" >> "$GITHUB_ENV"
           "$CHROME" --version
