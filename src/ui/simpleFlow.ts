@@ -1,0 +1,110 @@
+import { summarizeCookieHealth } from "../shared/diagnostics";
+import {
+  CookieDomainHealth,
+  CookieDomainSummary,
+  CookieImportPolicy,
+  ImportReport,
+  SectionSelection,
+} from "../shared/types";
+
+export type CookieTransferSummary = {
+  domains: number;
+  total: number;
+  session: number;
+  persistent: number;
+};
+
+export function summarizeCookieTransfer(domains: CookieDomainSummary[]): CookieTransferSummary {
+  return domains.reduce(
+    (summary, domain) => ({
+      domains: summary.domains + 1,
+      total: summary.total + domain.total,
+      session: summary.session + domain.session,
+      persistent: summary.persistent + domain.persistent,
+    }),
+    { domains: 0, total: 0, session: 0, persistent: 0 },
+  );
+}
+
+export function requiresAllDomainCookieAcknowledgement({
+  sections,
+  selectedDomains,
+  totalDomains,
+}: {
+  sections: SectionSelection;
+  selectedDomains: number;
+  totalDomains: number;
+}) {
+  return sections.cookies && totalDomains > 0 && selectedDomains === totalDomains;
+}
+
+export function getExportActionState({
+  allDomainAcknowledged,
+  hasPassword,
+  isBusy,
+  sections,
+  selectedDomains,
+  totalDomains,
+}: {
+  allDomainAcknowledged: boolean;
+  hasPassword: boolean;
+  isBusy: boolean;
+  sections: SectionSelection;
+  selectedDomains: number;
+  totalDomains: number;
+}) {
+  const needsAllDomainAcknowledgement = requiresAllDomainCookieAcknowledgement({
+    sections,
+    selectedDomains,
+    totalDomains,
+  });
+
+  return {
+    label: "Create encrypted cookie archive",
+    disabled:
+      isBusy ||
+      !hasPassword ||
+      (sections.cookies && selectedDomains === 0) ||
+      (needsAllDomainAcknowledgement && !allDomainAcknowledged),
+    needsAllDomainAcknowledgement,
+  };
+}
+
+export function getImportActionState({
+  hasPreview,
+  isBusy,
+  policy,
+  replaceAcknowledged,
+}: {
+  hasPreview: boolean;
+  isBusy: boolean;
+  policy: CookieImportPolicy;
+  replaceAcknowledged: boolean;
+}) {
+  return {
+    label: policy === "dry_run" ? "Run dry run" : "Restore cookies",
+    disabled:
+      isBusy ||
+      !hasPreview ||
+      (policy === "replace_selected_domains" && !replaceAcknowledged),
+  };
+}
+
+export function cookieOutcomeLabel(health: CookieDomainHealth) {
+  const labels: Record<CookieDomainHealth, string> = {
+    good: "Likely restored",
+    partial: "May need login",
+    needs_login: "May need login",
+    failed: "Not restored",
+  };
+  return labels[health];
+}
+
+export function summarizeCookieOutcomes(report: ImportReport) {
+  const health = summarizeCookieHealth(report);
+  return {
+    likelyRestored: health.good,
+    mayNeedLogin: health.partial + health.needs_login,
+    notRestored: health.failed,
+  };
+}

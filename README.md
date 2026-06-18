@@ -7,25 +7,26 @@
 [![Release](https://github.com/commit3296/browser-bridge/actions/workflows/release.yml/badge.svg)](https://github.com/commit3296/browser-bridge/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Browser Bridge is a Chrome-first browser migration extension for moving selected browser data through a local encrypted archive.
+Browser Bridge is a Chrome-first cookie transfer extension for moving website cookies between browser profiles through a local encrypted archive.
 
-It is built for controlled profile-to-profile transfers: export data from one Chromium-family browser profile, move the encrypted archive file yourself, then import it into another profile.
+It is built for controlled profile-to-profile transfers: export cookies from one Chromium-family browser profile, move the encrypted archive file yourself, then import it into another profile. Bookmarks and an extension list can be included with the same archive.
 
 ## Features
 
-- Guided side panel migration flow with advanced controls.
+- Cookie-first side panel flow with advanced controls.
 - Popup launcher for quick access.
 - Password-encrypted schema v2 archives using PBKDF2-SHA-256 and AES-GCM.
-- Bookmarks export/import.
-- Domain-scoped cookies export/import through the Chrome cookies API.
+- All-domain cookies export by default, with explicit encrypted-file acknowledgement.
+- Domain-scoped cookie review and import through the Chrome cookies API.
+- Optional bookmarks export/import.
 - Cookie import policies:
   - overwrite matching;
   - skip existing;
   - replace selected domains;
   - dry run.
 - Cookie preview and migration reports without showing cookie values.
-- Domain health diagnostics: Good, Partial, Failed, Needs login.
-- Installed extension inventory export.
+- User-facing cookie restore outcomes: likely restored, may need login, not restored.
+- Optional installed extension list export.
 - Dev-only QA diagnostics for safe test cookies.
 
 ## Current Scope
@@ -48,7 +49,8 @@ Cookies can contain active session secrets. Browser Bridge treats them as sensit
 - cookie values are encrypted inside the archive;
 - cookie values are never displayed in preview, diagnostics, screenshots, or downloaded reports;
 - archive passwords are used only in memory and are not stored;
-- default import is merge/overwrite and does not delete unrelated cookies;
+- default import restores matching cookies without deleting unrelated browser data;
+- all-domain cookie export requires explicit in-app acknowledgement;
 - destructive replacement is limited to selected domains and requires confirmation.
 
 Read more:

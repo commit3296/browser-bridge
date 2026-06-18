@@ -18,6 +18,58 @@ test.skip(
   "Chromium extension UI tests need a display on Linux. Run with xvfb-run.",
 );
 
+test("simple cookie-first export requires all-domain acknowledgement", async () => {
+  const userDataDir = await mkdtemp(join(tmpdir(), "browser-bridge-simple-ui-"));
+  let context: BrowserContext | undefined;
+
+  try {
+    context = await chromium.launchPersistentContext(userDataDir, {
+      executablePath: chromeExecutable,
+      headless: process.env.BROWSER_BRIDGE_E2E_HEADLESS === "1",
+      ignoreDefaultArgs: ["--disable-extensions"],
+      viewport: { width: 420, height: 920 },
+      args: [
+        "--no-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        `--disable-extensions-except=${extensionPath}`,
+        `--load-extension=${extensionPath}`,
+        ...(process.env.BROWSER_BRIDGE_E2E_HEADLESS === "1" ? ["--headless=new"] : []),
+      ],
+    });
+    await context.addCookies([
+      cookieForUrl("https://example.com", "bridge_simple_example", "simple-secret"),
+      cookieForUrl("https://github.com", "bridge_simple_github", "simple-github"),
+    ]);
+
+    const extensionId = await getExtensionId(context, userDataDir);
+    const page = await context.newPage();
+    await page.goto(`chrome-extension://${extensionId}/sidepanel.html`);
+
+    await expect(page.getByText("Cookie transfer between browser profiles")).toBeVisible();
+    await expect(page.getByText("Local file only")).toBeVisible();
+    await expect(page.getByRole("button", { name: /Export cookies from this browser/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Import cookies into this browser/ })).toBeVisible();
+    await expect(page.getByText("I understand this encrypted file may keep me signed in")).toBeVisible();
+
+    const createArchive = page.getByRole("button", { name: "Create encrypted cookie archive" });
+    await page.getByPlaceholder("Password for encrypted archive").fill(archivePassword);
+    await expect(createArchive).toBeDisabled();
+    await page.getByRole("checkbox", { name: "Confirm encrypted cookie archive risk" }).click();
+    await expect(createArchive).toBeEnabled();
+    await expect(page.getByText("Cookie import policy")).toHaveCount(0);
+    await page.screenshot({
+      path: "test-results/sidepanel-simple-export-narrow.png",
+      fullPage: true,
+    });
+
+    await assertNoHorizontalOverflow(page);
+  } finally {
+    await context?.close();
+    await rm(userDataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 });
+  }
+});
+
 for (const viewport of [
   { name: "narrow", width: 420, height: 920 },
   { name: "wide", width: 900, height: 920 },
@@ -48,7 +100,8 @@ for (const viewport of [
       await page.goto(`chrome-extension://${extensionId}/sidepanel.html?qa=1`);
 
       await expect(page.getByRole("heading", { name: "Browser Bridge" })).toBeVisible();
-      await expect(page.getByText("Guided migration")).toBeVisible();
+      await expect(page.getByText("Guided cookie transfer")).toBeVisible();
+      await expect(page.getByText("Cookie transfer between browser profiles")).toBeVisible();
       await page.screenshot({
         path: `test-results/sidepanel-export-${viewport.name}.png`,
         fullPage: true,
@@ -68,10 +121,11 @@ for (const viewport of [
       expect(archiveResponse.ok).toBe(true);
       await writeFile(archivePath, JSON.stringify(archiveResponse.archive, null, 2));
 
-      await page.getByRole("button", { name: "Import", exact: true }).click();
+      await page.getByRole("button", { name: /Import cookies into this browser/ }).click();
       await page.locator('input[type="file"]').setInputFiles(archivePath);
       await page.getByPlaceholder("Archive password").fill(archivePassword);
-      await page.getByRole("button", { name: "Preview / Dry run" }).click();
+      await expect(page.getByRole("button", { name: "Restore cookies", exact: true })).toBeDisabled();
+      await page.getByRole("button", { name: "Preview cookies" }).click();
       await expect(page.getByRole("columnheader", { name: "Domain" })).toBeVisible();
       await expect(page.getByRole("columnheader", { name: "Overwrite" })).toBeVisible();
       await page.screenshot({
@@ -81,6 +135,9 @@ for (const viewport of [
 
       await page.getByRole("button", { name: "Replace selected domains" }).click();
       await expect(page.getByText("deletes cookies only for the selected domains")).toBeVisible();
+      await expect(page.getByRole("button", { name: "Restore cookies", exact: true })).toBeDisabled();
+      await page.getByRole("checkbox", { name: "Confirm replace selected domains" }).click();
+      await expect(page.getByRole("button", { name: "Restore cookies", exact: true })).toBeEnabled();
       await page.screenshot({
         path: `test-results/sidepanel-replace-warning-${viewport.name}.png`,
         fullPage: true,
@@ -88,10 +145,10 @@ for (const viewport of [
 
       await page.getByRole("button", { name: /^Dry run Return a report/ }).click();
       await page.getByRole("button", { name: "Run dry run" }).click();
-      await expect(page.getByText("Import report")).toBeVisible();
+      await expect(page.getByText("Cookie restore report")).toBeVisible();
       await expect(page.getByText("Download report")).toBeVisible();
-      await expect(page.getByText("Good").first()).toBeVisible();
-      await expect(page.getByRole("heading", { name: "Cookie domains" })).toBeVisible();
+      await expect(page.getByText("Likely restored").first()).toBeVisible();
+      await expect(page.getByText("Cookie domains").first()).toBeVisible();
       await page.screenshot({
         path: `test-results/sidepanel-report-${viewport.name}.png`,
         fullPage: true,
