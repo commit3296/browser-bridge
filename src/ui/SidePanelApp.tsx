@@ -5,7 +5,6 @@ import {
   CloudOff,
   EyeOff,
   FileJson,
-  HardDrive,
   Loader2,
   LockKeyhole,
   SlidersHorizontal,
@@ -117,6 +116,8 @@ export function SidePanelApp() {
   });
   const showQaDiagnostics =
     import.meta.env.DEV || new URLSearchParams(window.location.search).get("qa") === "1";
+  const showStandaloneCookieWarning =
+    sections.cookies && !(mode === "export" && needsAllDomainExportAcknowledgement);
 
   useEffect(() => {
     const listener = (message: unknown) => {
@@ -353,14 +354,14 @@ export function SidePanelApp() {
 
   return (
     <main className="min-h-screen bg-background">
-      <header className="border-b bg-card px-5 py-4">
+      <header className="border-b bg-card px-4 py-3">
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
               <ShieldCheck className="h-4 w-4 text-primary" />
               Cookie transfer between browser profiles
             </div>
-            <h1 className="mt-1 text-2xl font-semibold">Browser Bridge</h1>
+            <h1 className="mt-0.5 text-xl font-semibold">Browser Bridge</h1>
           </div>
           <Button
             disabled={busy === "loading-domains"}
@@ -375,7 +376,7 @@ export function SidePanelApp() {
         <TrustStrip />
       </header>
 
-      <section className="border-b bg-card px-5 py-3">
+      <section className="border-b bg-card px-4 py-2.5">
         <ActionChooser
           mode={mode}
           onChange={(nextMode) => {
@@ -388,8 +389,9 @@ export function SidePanelApp() {
         />
       </section>
 
-      <section className="space-y-5 px-5 py-5">
+      <section className="space-y-4 px-4 py-4">
         <GuidedStatus
+          advancedOpen={advancedOpen}
           archiveSelected={Boolean(archive)}
           archiveSaved={archiveSaved}
           hasPassword={Boolean(password)}
@@ -398,10 +400,11 @@ export function SidePanelApp() {
           mode={mode}
           sections={sections}
           selectedDomains={selectedDomains.length}
+          onAdvancedToggle={() => setAdvancedOpen((open) => !open)}
         />
 
         {mode === "import" ? (
-          <Panel title="1. Choose archive">
+          <Panel title="Choose archive">
             <input
               ref={fileRef}
               className="hidden"
@@ -428,20 +431,11 @@ export function SidePanelApp() {
           </Panel>
         ) : null}
 
-        <button
-          className="inline-flex h-9 items-center gap-2 rounded-md border bg-card px-3 text-sm font-medium transition-[background-color,transform] duration-150 ease-out active:scale-[0.98] hover:bg-muted/55"
-          type="button"
-          onClick={() => setAdvancedOpen((open) => !open)}
-        >
-          <SlidersHorizontal className="h-4 w-4" />
-          {advancedOpen ? "Hide advanced" : "Advanced"}
-        </button>
-
-        <Panel title={mode === "export" ? "1. Data to transfer" : "2. Data to restore"}>
+        <Panel title={mode === "export" ? "Data to transfer" : "Data to restore"}>
           <SectionPicker disabled={isBusy} sections={sections} onChange={handleSectionChange} />
         </Panel>
 
-        <Panel title={mode === "export" ? "2. Password" : "3. Password"}>
+        <Panel title="Password">
           <input
             className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition-[border-color,box-shadow] duration-150 focus:border-primary focus:ring-2 focus:ring-ring/20"
             disabled={isBusy}
@@ -461,12 +455,24 @@ export function SidePanelApp() {
         {sections.cookies ? (
           <Panel
             aside={
-              <span className="text-xs text-muted-foreground">
-                {selectedDomains.length} / {visibleDomains.length}
-                {allVisibleDomainsSelected ? " · all selected" : ""}
-              </span>
+              mode === "export" && !advancedOpen ? (
+                <Button
+                  className="h-7 px-2 text-xs"
+                  disabled={isBusy || visibleDomains.length === 0}
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setDomainReviewOpen((open) => !open)}
+                >
+                  {domainReviewOpen ? "Hide" : "Review"}
+                </Button>
+              ) : (
+                <span className="text-xs text-muted-foreground">
+                  {selectedDomains.length} / {visibleDomains.length}
+                  {allVisibleDomainsSelected ? " · all selected" : ""}
+                </span>
+              )
             }
-            title={mode === "export" ? "3. Cookie domains" : "4. Cookie restore preview"}
+            title={mode === "export" ? "Cookie domains" : "Cookie restore preview"}
           >
             <CookieDomainSummaryPanel
               archiveReady={Boolean(archive)}
@@ -475,15 +481,11 @@ export function SidePanelApp() {
               summary={cookieSummary}
               totalDomains={visibleDomains.length}
             />
-            {mode === "export" && !advancedOpen ? (
-              <Button
-                className="mt-3 w-full"
-                disabled={isBusy || visibleDomains.length === 0}
-                variant="outline"
-                onClick={() => setDomainReviewOpen((open) => !open)}
-              >
-                {domainReviewOpen ? "Hide cookie domains" : "Review cookie domains"}
-              </Button>
+            {needsAllDomainExportAcknowledgement ? (
+              <CookieArchiveAcknowledgement
+                checked={allDomainExportAcknowledged}
+                onChange={setAllDomainExportAcknowledged}
+              />
             ) : null}
             {advancedOpen || (mode === "export" && domainReviewOpen) ? (
               <div className="mt-3">
@@ -496,18 +498,12 @@ export function SidePanelApp() {
                 />
               </div>
             ) : null}
-            {needsAllDomainExportAcknowledgement ? (
-              <CookieArchiveAcknowledgement
-                checked={allDomainExportAcknowledged}
-                onChange={setAllDomainExportAcknowledged}
-              />
-            ) : null}
           </Panel>
         ) : null}
 
         {mode === "import" && sections.cookies ? (
           advancedOpen ? (
-            <Panel title="5. Advanced cookie restore policy">
+            <Panel title="Advanced cookie restore policy">
               <CookiePolicySelector
                 disabled={isBusy}
                 policy={cookieImportPolicy}
@@ -528,15 +524,17 @@ export function SidePanelApp() {
           )
         ) : null}
 
-        <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-950">
-          <div className="flex gap-2">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            <p className="text-xs leading-5">
-              Cookies may keep websites signed in. Keep encrypted archives private and remember
-              the password; Browser Bridge cannot recover it.
-            </p>
+        {showStandaloneCookieWarning ? (
+          <div className="rounded-md border border-amber-300 bg-amber-50 p-2.5 text-amber-950">
+            <div className="flex gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <p className="text-xs leading-4">
+                Cookies may keep websites signed in. Keep encrypted archives private; passwords
+                cannot be recovered.
+              </p>
+            </div>
           </div>
-        </div>
+        ) : null}
 
         {lastPreview ? <PreviewPanel advanced={advancedOpen} preview={lastPreview} /> : null}
         {lastPreview && advancedOpen ? <ExtensionInventory items={lastPreview.extensions.items} /> : null}
@@ -551,7 +549,7 @@ export function SidePanelApp() {
         ) : null}
       </section>
 
-      <footer className="sticky bottom-0 flex gap-2 border-t bg-card/95 px-5 py-4 backdrop-blur">
+      <footer className="sticky bottom-0 flex gap-2 border-t bg-card/95 px-4 py-3 backdrop-blur">
         {busy === "importing" ? (
           <Button variant="outline" onClick={handleCancel}>
             <Square className="h-4 w-4" />
@@ -580,6 +578,7 @@ export function SidePanelApp() {
 }
 
 function GuidedStatus({
+  advancedOpen,
   archiveSelected,
   archiveSaved,
   hasPassword,
@@ -588,7 +587,9 @@ function GuidedStatus({
   mode,
   sections,
   selectedDomains,
+  onAdvancedToggle,
 }: {
+  advancedOpen: boolean;
   archiveSelected: boolean;
   archiveSaved: boolean;
   hasPassword: boolean;
@@ -597,6 +598,7 @@ function GuidedStatus({
   mode: Mode;
   sections: SectionSelection;
   selectedDomains: number;
+  onAdvancedToggle: () => void;
 }) {
   const steps = [
     { label: "Choose action", done: true },
@@ -617,51 +619,54 @@ function GuidedStatus({
       done: mode === "export" ? archiveSaved : hasReport,
     },
   ];
+  const firstIncompleteIndex = steps.findIndex((step) => !step.done);
+  const activeIndex = firstIncompleteIndex === -1 ? steps.length - 1 : firstIncompleteIndex;
+  const activeStep = steps[activeIndex];
 
   return (
-    <section className="rounded-md border bg-card p-4">
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div>
-          <div className="text-sm font-semibold">Guided cookie transfer</div>
-          <div className="mt-1 text-xs leading-5 text-muted-foreground">
-            Move cookies through a local encrypted file. Cookie values stay hidden.
-          </div>
-        </div>
-        <span className="rounded-sm bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
+    <section className="flex min-h-10 items-center gap-2 rounded-md border bg-card px-2.5 py-1.5">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <span className="rounded-sm bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">
           {mode === "export" ? "Export" : "Import"}
         </span>
+        <span className="shrink-0 text-xs text-muted-foreground">
+          Step {activeIndex + 1}/{steps.length}
+        </span>
+        <span className="truncate text-xs font-medium">{activeStep.label}</span>
+        <div className="ml-0.5 hidden shrink-0 items-center gap-1 min-[360px]:flex" aria-hidden="true">
+          {steps.map((step, index) => (
+            <span
+              key={step.label}
+              className={`h-1.5 w-1.5 rounded-full ${
+                step.done || index === activeIndex ? "bg-primary" : "bg-muted"
+              }`}
+            />
+          ))}
+        </div>
       </div>
-      <div className="grid gap-2 sm:grid-cols-5">
-        {steps.map((step, index) => (
-          <div
-            key={step.label}
-            className={`rounded-md border p-2 text-xs ${
-              step.done ? "border-primary/30 bg-primary/10" : "bg-background text-muted-foreground"
-            }`}
-          >
-            <div className="font-medium">{index + 1}. {step.label}</div>
-          </div>
-        ))}
-      </div>
+      <Button size="sm" variant="ghost" onClick={onAdvancedToggle}>
+        <SlidersHorizontal className="h-4 w-4" />
+        <span className="hidden sm:inline">{advancedOpen ? "Hide advanced" : "Advanced"}</span>
+        <span className="sm:hidden">Advanced</span>
+      </Button>
     </section>
   );
 }
 
 function TrustStrip() {
   const items = [
-    { label: "Local file only", icon: HardDrive },
-    { label: "Encrypted", icon: LockKeyhole },
+    { label: "Local encrypted file", icon: LockKeyhole },
     { label: "No cloud upload", icon: CloudOff },
-    { label: "Cookie values never shown", icon: EyeOff },
+    { label: "Values hidden", icon: EyeOff },
   ];
 
   return (
-    <div className="mt-4 grid grid-cols-2 gap-2 text-[11px] text-muted-foreground sm:grid-cols-4">
+    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
       {items.map((item) => {
         const Icon = item.icon;
         return (
-          <div key={item.label} className="flex items-center gap-1.5 rounded-md border bg-background px-2 py-1.5">
-            <Icon className="h-3.5 w-3.5 text-primary" />
+          <div key={item.label} className="flex min-w-0 items-center gap-1">
+            <Icon className="h-3.5 w-3.5 shrink-0 text-primary" />
             <span className="truncate">{item.label}</span>
           </div>
         );
@@ -679,45 +684,49 @@ function ActionChooser({
 }) {
   const actions: Array<{
     mode: Mode;
+    ariaLabel: string;
     title: string;
-    description: string;
+    subtitle: string;
     icon: typeof ArrowDownToLine;
   }> = [
     {
       mode: "export",
-      title: "Export cookies from this browser",
-      description: "Create an encrypted file from the current browser profile.",
+      ariaLabel: "Export cookies from this browser",
+      title: "Export cookies",
+      subtitle: "From this browser",
       icon: ArrowDownToLine,
     },
     {
       mode: "import",
-      title: "Import cookies into this browser",
-      description: "Preview an encrypted file, then restore cookies into this profile.",
+      ariaLabel: "Import cookies into this browser",
+      title: "Import cookies",
+      subtitle: "Into this browser",
       icon: ArrowUpFromLine,
     },
   ];
 
   return (
-    <div className="grid gap-2 sm:grid-cols-2">
+    <div className="grid grid-cols-2 gap-2">
       {actions.map((action) => {
         const Icon = action.icon;
         const active = mode === action.mode;
         return (
           <button
             key={action.mode}
-            className={`flex min-h-[92px] items-start gap-3 rounded-md border p-3 text-left transition-[background-color,border-color,transform] duration-150 ease-out active:scale-[0.99] ${
+            aria-label={action.ariaLabel}
+            className={`flex min-h-[54px] cursor-pointer items-center gap-2.5 rounded-md border px-2.5 text-left transition-[background-color,border-color,transform] duration-150 ease-out active:scale-[0.99] ${
               active ? "border-primary bg-primary/10" : "bg-background hover:bg-muted/55"
             }`}
             type="button"
             onClick={() => onChange(action.mode)}
           >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-card">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-card">
               <Icon className="h-4 w-4 text-primary" />
             </span>
-            <span>
-              <span className="block text-sm font-semibold">{action.title}</span>
-              <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                {action.description}
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-semibold">{action.title}</span>
+              <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                {action.subtitle}
               </span>
             </span>
           </button>
@@ -738,7 +747,7 @@ function Panel({
 }) {
   return (
     <section>
-      <div className="mb-2 flex items-center justify-between gap-3">
+      <div className="mb-1.5 flex items-center justify-between gap-3">
         <h2 className="text-sm font-semibold">{title}</h2>
         {aside}
       </div>
@@ -749,8 +758,8 @@ function Panel({
 
 function PreviewPanel({ advanced, preview }: { advanced: boolean; preview: ArchivePreview }) {
   return (
-    <div className="rounded-md border bg-card p-4">
-      <div className="mb-3 text-sm font-semibold">Preview</div>
+    <div className="rounded-md border bg-card p-3">
+      <div className="mb-2 text-sm font-semibold">Preview</div>
       <div className="grid gap-2 sm:grid-cols-3">
         <Metric label="Bookmarks" value={preview.bookmarks.total} />
         <Metric label="Cookie domains" value={preview.cookieDomains.length} />
@@ -758,7 +767,7 @@ function PreviewPanel({ advanced, preview }: { advanced: boolean; preview: Archi
       </div>
       <SimpleCookiePreview preview={preview} />
       {advanced ? <CookiePreview preview={preview} /> : null}
-      <div className="mt-3 text-xs text-muted-foreground">
+      <div className="mt-2 text-xs text-muted-foreground">
         {preview.extensions.installed} installed · {preview.extensions.missing} missing extensions
       </div>
       <div className="mt-1 text-xs text-muted-foreground">
@@ -778,7 +787,7 @@ function SimpleCookiePreview({ preview }: { preview: ArchivePreview }) {
     preview.cookies.chromeRejectedRisk;
 
   return (
-    <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+    <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
       <Metric label="New cookies" value={preview.cookies.new} />
       <Metric label="Will update" value={preview.cookies.overwrite} />
       <Metric label="Skipped" value={skipped} />
@@ -801,24 +810,32 @@ function CookieDomainSummaryPanel({
   totalDomains: number;
 }) {
   const waitingForImportPreview = mode === "import" && (!archiveReady || !previewReady);
+  const metrics = [
+    { label: "Domains", value: waitingForImportPreview ? 0 : summary.domains },
+    { label: "Cookies", value: waitingForImportPreview ? 0 : summary.total },
+    { label: "Session", value: waitingForImportPreview ? 0 : summary.session },
+    { label: "Persistent", value: waitingForImportPreview ? 0 : summary.persistent },
+  ];
 
   return (
-    <div className="rounded-md border bg-card p-3">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Metric label="Domains" value={waitingForImportPreview ? 0 : summary.domains} />
-        <Metric label="Cookies" value={waitingForImportPreview ? 0 : summary.total} />
-        <Metric label="Session" value={waitingForImportPreview ? 0 : summary.session} />
-        <Metric label="Persistent" value={waitingForImportPreview ? 0 : summary.persistent} />
+    <div className="rounded-md border bg-card p-2.5">
+      <div className="grid grid-cols-4 divide-x overflow-hidden rounded-md border bg-background">
+        {metrics.map((metric) => (
+          <div key={metric.label} className="min-w-0 px-2 py-2">
+            <div className="truncate text-base font-semibold">{metric.value}</div>
+            <div className="truncate text-[11px] text-muted-foreground">{metric.label}</div>
+          </div>
+        ))}
       </div>
-      <div className="mt-3 text-xs leading-5 text-muted-foreground">
+      <div className="mt-2 text-xs leading-4 text-muted-foreground">
         {mode === "export"
           ? totalDomains === 0
-            ? "No cookies were found yet. Refresh domains after opening sites you want to transfer."
-            : "All detected cookie domains are selected by default. You can review and remove domains before creating the archive."
+            ? "No cookies found yet. Refresh after opening sites you want to transfer."
+            : "All detected domains are selected by default. Review and remove domains if needed."
           : archiveReady
             ? previewReady
               ? "Preview is ready. Restore keeps other browser data unless Advanced replace mode is selected."
-              : "Enter the password and preview the archive before restoring cookies."
+              : "Enter the password and preview before restoring cookies."
             : "Choose an encrypted archive to preview its cookie domains."}
       </div>
     </div>
@@ -833,13 +850,13 @@ function CookieArchiveAcknowledgement({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="mt-3 flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-950">
+    <div className="mt-2 flex items-start gap-2.5 rounded-md border border-amber-300 bg-amber-50 p-2.5 text-amber-950">
       <Checkbox
         checked={checked}
         aria-label="Confirm encrypted cookie archive risk"
         onCheckedChange={(value) => onChange(value === true)}
       />
-      <span className="text-xs leading-5">
+      <span className="text-xs leading-4">
         I understand this encrypted file may keep me signed in to websites. I will keep it
         private and remember the password.
       </span>
@@ -855,13 +872,13 @@ function ReplaceDomainAcknowledgement({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="mt-2 flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-950">
+    <div className="mt-2 flex items-start gap-2.5 rounded-md border border-amber-300 bg-amber-50 p-2.5 text-amber-950">
       <Checkbox
         checked={checked}
         aria-label="Confirm replace selected domains"
         onCheckedChange={(value) => onChange(value === true)}
       />
-      <span className="text-xs leading-5">
+      <span className="text-xs leading-4">
         Replace selected domains deletes cookies only for the selected domains before import.
         Bookmarks and extensions are not affected.
       </span>
@@ -906,7 +923,7 @@ function CookiePolicySelector({
       {options.map((option) => (
         <button
           key={option.value}
-          className={`rounded-md border p-3 text-left transition-[background-color,border-color,transform] duration-150 ease-out active:scale-[0.99] ${
+          className={`cursor-pointer rounded-md border p-2.5 text-left transition-[background-color,border-color,transform] duration-150 ease-out active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 ${
             policy === option.value ? "border-primary bg-primary/10" : "bg-card hover:bg-muted/55"
           }`}
           disabled={disabled}
@@ -914,7 +931,7 @@ function CookiePolicySelector({
           onClick={() => onChange(option.value)}
         >
           <div className="text-sm font-medium">{option.label}</div>
-          <div className="mt-1 text-xs text-muted-foreground">{option.description}</div>
+          <div className="mt-0.5 text-xs text-muted-foreground">{option.description}</div>
         </button>
       ))}
     </div>
@@ -923,8 +940,8 @@ function CookiePolicySelector({
 
 function Metric({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-md border bg-background p-3">
-      <div className="text-xl font-semibold">{value}</div>
+    <div className="rounded-md border bg-background p-2.5">
+      <div className="text-lg font-semibold">{value}</div>
       <div className="text-xs text-muted-foreground">{label}</div>
     </div>
   );

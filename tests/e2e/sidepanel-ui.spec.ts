@@ -47,7 +47,7 @@ test("simple cookie-first export requires all-domain acknowledgement", async () 
     await page.goto(`chrome-extension://${extensionId}/sidepanel.html`);
 
     await expect(page.getByText("Cookie transfer between browser profiles")).toBeVisible();
-    await expect(page.getByText("Local file only")).toBeVisible();
+    await expect(page.getByText("Local encrypted file")).toBeVisible();
     await expect(page.getByRole("button", { name: /Export cookies from this browser/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /Import cookies into this browser/ })).toBeVisible();
     await expect(page.getByText("I understand this encrypted file may keep me signed in")).toBeVisible();
@@ -100,7 +100,7 @@ for (const viewport of [
       await page.goto(`chrome-extension://${extensionId}/sidepanel.html?qa=1`);
 
       await expect(page.getByRole("heading", { name: "Browser Bridge" })).toBeVisible();
-      await expect(page.getByText("Guided cookie transfer")).toBeVisible();
+      await expect(page.getByText("Step")).toBeVisible();
       await expect(page.getByText("Cookie transfer between browser profiles")).toBeVisible();
       await page.screenshot({
         path: `test-results/sidepanel-export-${viewport.name}.png`,
