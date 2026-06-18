@@ -62,6 +62,7 @@ Read more:
 - [Threat model](docs/THREAT_MODEL.md)
 - [Chromium targets](docs/CHROMIUM_TARGETS.md)
 - [Real-world QA](docs/REAL_WORLD_QA.md)
+- [Store submission pack](docs/STORE_SUBMISSION.md)
 - [Dependency audit notes](docs/DEPENDENCY_AUDIT.md)
 - [Security operations](docs/SECURITY_OPERATIONS.md)
 

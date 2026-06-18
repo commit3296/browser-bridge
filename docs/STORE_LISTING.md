@@ -36,3 +36,11 @@ Browser Bridge does not send browser data to any server. Archives are local file
 - `tabs`: build the optional Open Tabs domain preset.
 - `management`: export installed extension inventory.
 - `sidePanel`: provide the main migration interface.
+
+## Store Metadata Draft
+
+- Category: Productivity.
+- Support URL: `https://github.com/commit3296/browser-bridge/issues`.
+- Security contact: `https://github.com/commit3296/browser-bridge/security/advisories/new`.
+- Screenshot package: `docs/store-assets/screenshots`.
+- Release package: `browser-bridge-0.1.5-chrome.zip` from the GitHub release.

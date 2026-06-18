@@ -20,6 +20,13 @@
 - E2E must execute and pass before release. A skipped e2e run is useful during development but is not release-ready.
 - UI QA screenshots are written to `test-results/sidepanel-*.png`.
 
+## Store Screenshots
+
+- Generate Chrome Web Store screenshots with `npm run screenshots:store`.
+- Screenshots are written to `docs/store-assets/screenshots/*.png`.
+- The screenshot harness uses synthetic cookies only and must not reveal cookie values, archive passwords, or QA diagnostics.
+- Review [STORE_SUBMISSION.md](STORE_SUBMISSION.md) before uploading screenshots.
+
 ## Dev Diagnostics
 
 - Open the side panel with `?qa=1` or use a dev build to show QA diagnostics.
@@ -48,3 +55,4 @@
 - Extension inventory appears, but extensions are not installed automatically.
 - Saved browser passwords are not exported or imported.
 - Archives are local files encrypted with the user-provided password.
+- Store screenshots are `1280x800` PNG files and have been visually inspected.
