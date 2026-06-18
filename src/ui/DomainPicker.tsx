@@ -106,7 +106,7 @@ export function DomainPicker({
           {(["session", "persistent", "httpOnly", "secure"] as const).map((filter) => (
             <button
               key={filter}
-              className={`h-8 rounded-md border px-2 text-xs font-medium transition-[background-color,color,border-color,transform] duration-150 ease-out active:scale-[0.98] ${
+              className={`h-8 cursor-pointer rounded-md border px-2 text-xs font-medium transition-[background-color,color,border-color,transform] duration-150 ease-out active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 ${
                 filters.includes(filter)
                   ? "border-primary bg-primary text-primary-foreground"
                   : "bg-background text-muted-foreground hover:text-foreground"
@@ -129,7 +129,7 @@ export function DomainPicker({
           filtered.map((domain) => (
             <button
               key={domain.domain}
-              className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-[background-color,transform] duration-150 ease-out active:scale-[0.995] hover:bg-muted/55"
+              className="flex w-full cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-left transition-[background-color,transform] duration-150 ease-out active:scale-[0.995] disabled:cursor-not-allowed disabled:opacity-60 hover:bg-muted/55"
               disabled={disabled}
               type="button"
               onClick={() => toggle(domain.domain)}
