@@ -2,8 +2,12 @@ import {
   AlertTriangle,
   ArrowDownToLine,
   ArrowUpFromLine,
+  CloudOff,
+  EyeOff,
   FileJson,
+  HardDrive,
   Loader2,
+  LockKeyhole,
   SlidersHorizontal,
   RefreshCw,
   ShieldCheck,
@@ -12,6 +16,7 @@ import {
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { browser } from "wxt/browser";
 import { Button } from "../components/ui/button";
+import { Checkbox } from "../components/ui/checkbox";
 import {
   CookieImportPolicy,
   defaultCookieImportPolicy,
@@ -38,6 +43,12 @@ import { QaDiagnostics } from "./QaDiagnostics";
 import { ReportView } from "./ReportView";
 import { SectionPicker } from "./SectionPicker";
 import { CookieDomainSummary, ArchivePreview } from "../shared/types";
+import {
+  getExportActionState,
+  getImportActionState,
+  requiresAllDomainCookieAcknowledgement,
+  summarizeCookieTransfer,
+} from "./simpleFlow";
 
 type Mode = "export" | "import";
 type BusyState = "idle" | "loading-domains" | "exporting" | "previewing" | "importing";
@@ -58,6 +69,9 @@ export function SidePanelApp() {
   const [archiveName, setArchiveName] = useState("");
   const [report, setReport] = useState<ImportReport | null>(null);
   const [archiveSaved, setArchiveSaved] = useState(false);
+  const [domainReviewOpen, setDomainReviewOpen] = useState(false);
+  const [allDomainExportAcknowledged, setAllDomainExportAcknowledged] = useState(false);
+  const [replaceImportAcknowledged, setReplaceImportAcknowledged] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(
     () => new URLSearchParams(window.location.search).get("qa") === "1",
   );
@@ -72,6 +86,35 @@ export function SidePanelApp() {
   const visibleDomains = mode === "export" ? domains : importDomains;
   const allVisibleDomainsSelected =
     visibleDomains.length > 0 && selectedDomains.length === visibleDomains.length;
+  const selectedDomainSummaries = useMemo(() => {
+    const selected = new Set(selectedDomains);
+    return visibleDomains.filter((domain) => selected.has(domain.domain));
+  }, [selectedDomains, visibleDomains]);
+  const cookieSummary = useMemo(
+    () => summarizeCookieTransfer(selectedDomainSummaries),
+    [selectedDomainSummaries],
+  );
+  const needsAllDomainExportAcknowledgement =
+    mode === "export" &&
+    requiresAllDomainCookieAcknowledgement({
+      sections,
+      selectedDomains: selectedDomains.length,
+      totalDomains: visibleDomains.length,
+    });
+  const exportAction = getExportActionState({
+    allDomainAcknowledged: allDomainExportAcknowledged,
+    hasPassword: Boolean(password),
+    isBusy,
+    sections,
+    selectedDomains: selectedDomains.length,
+    totalDomains: visibleDomains.length,
+  });
+  const importAction = getImportActionState({
+    hasPreview: Boolean(lastPreview),
+    isBusy,
+    policy: cookieImportPolicy,
+    replaceAcknowledged: replaceImportAcknowledged,
+  });
   const showQaDiagnostics =
     import.meta.env.DEV || new URLSearchParams(window.location.search).get("qa") === "1";
 
@@ -96,6 +139,7 @@ export function SidePanelApp() {
       }
       setDomains(response.cookieDomains);
       setSelectedDomains(response.cookieDomains.map((domain) => domain.domain));
+      setAllDomainExportAcknowledged(false);
     } catch (refreshError) {
       setError(getErrorMessage(refreshError));
     } finally {
@@ -116,6 +160,7 @@ export function SidePanelApp() {
         .filter((domain) => available.has(domain))
         .sort();
       setSelectedDomains(tabDomains);
+      setAllDomainExportAcknowledged(false);
       if (tabDomains.length === 0) {
         setError("No open tab domains match the current cookie list.");
       }
@@ -133,6 +178,10 @@ export function SidePanelApp() {
       setError("Select at least one cookie domain or disable cookies.");
       return;
     }
+    if (needsAllDomainExportAcknowledgement && !allDomainExportAcknowledged) {
+      setError("Confirm that you understand the encrypted cookie archive can keep websites signed in.");
+      return;
+    }
 
     operationIdRef.current = createOperationId();
     setBusy("exporting");
@@ -143,18 +192,6 @@ export function SidePanelApp() {
     setArchiveSaved(false);
 
     try {
-      if (
-        sections.cookies &&
-        !window.confirm(
-          allVisibleDomainsSelected
-            ? "The archive will contain cookies from every listed domain. Keep the file private and remember the password."
-            : "The archive will contain selected cookie sessions. Keep the file private and remember the password.",
-        )
-      ) {
-        setBusy("idle");
-        return;
-      }
-
       const response = await sendBridgeMessage({
         type: "CREATE_ARCHIVE",
         operationId: operationIdRef.current,
@@ -169,6 +206,7 @@ export function SidePanelApp() {
       downloadArchive(response.archive);
       setArchiveSaved(true);
       setPassword("");
+      setAllDomainExportAcknowledged(false);
     } catch (exportError) {
       setError(getErrorMessage(exportError));
     } finally {
@@ -187,6 +225,8 @@ export function SidePanelApp() {
       setArchive(await readArchiveFile(file));
       setArchiveName(file.name);
       setArchiveSaved(false);
+      setReplaceImportAcknowledged(false);
+      setDomainReviewOpen(false);
       setMode("import");
     } catch (fileError) {
       setArchive(null);
@@ -244,9 +284,21 @@ export function SidePanelApp() {
 
   function handleCookieImportPolicyChange(policy: CookieImportPolicy) {
     setCookieImportPolicy(policy);
+    setReplaceImportAcknowledged(false);
     if (mode === "import" && archive && password && lastPreview && !isBusy) {
       void previewArchive(policy);
     }
+  }
+
+  function handleSectionChange(nextSections: SectionSelection) {
+    setSections(nextSections);
+    setAllDomainExportAcknowledged(false);
+  }
+
+  function handleSelectedDomainsChange(nextDomains: string[]) {
+    setSelectedDomains(nextDomains);
+    setAllDomainExportAcknowledged(false);
+    setReplaceImportAcknowledged(false);
   }
 
   async function handleImport() {
@@ -258,10 +310,9 @@ export function SidePanelApp() {
     if (
       sections.cookies &&
       cookieImportPolicy === "replace_selected_domains" &&
-      !window.confirm(
-        "Replace selected domains will delete cookies only for the selected domains before import. Continue?",
-      )
+      !replaceImportAcknowledged
     ) {
+      setError("Confirm replace mode before deleting selected-domain cookies.");
       return;
     }
 
@@ -302,12 +353,12 @@ export function SidePanelApp() {
 
   return (
     <main className="min-h-screen bg-background">
-      <header className="sticky top-0 z-10 border-b bg-card/95 px-5 py-4 backdrop-blur">
+      <header className="border-b bg-card px-5 py-4">
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
               <ShieldCheck className="h-4 w-4 text-primary" />
-              Chromium-family migration
+              Cookie transfer between browser profiles
             </div>
             <h1 className="mt-1 text-2xl font-semibold">Browser Bridge</h1>
           </div>
@@ -321,19 +372,20 @@ export function SidePanelApp() {
             <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
+        <TrustStrip />
       </header>
 
       <section className="border-b bg-card px-5 py-3">
-        <div className="grid grid-cols-2 rounded-md bg-muted p-1">
-          <ModeButton active={mode === "export"} onClick={() => setMode("export")}>
-            <ArrowDownToLine className="h-4 w-4" />
-            Export
-          </ModeButton>
-          <ModeButton active={mode === "import"} onClick={() => setMode("import")}>
-            <ArrowUpFromLine className="h-4 w-4" />
-            Import
-          </ModeButton>
-        </div>
+        <ActionChooser
+          mode={mode}
+          onChange={(nextMode) => {
+            setMode(nextMode);
+            setError("");
+            setReport(null);
+            setDomainReviewOpen(false);
+            setReplaceImportAcknowledged(false);
+          }}
+        />
       </section>
 
       <section className="space-y-5 px-5 py-5">
@@ -348,6 +400,34 @@ export function SidePanelApp() {
           selectedDomains={selectedDomains.length}
         />
 
+        {mode === "import" ? (
+          <Panel title="1. Choose archive">
+            <input
+              ref={fileRef}
+              className="hidden"
+              type="file"
+              accept="application/json,.json"
+              onChange={handleFileChange}
+            />
+            <div className="flex items-center gap-3 rounded-md border bg-card p-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-muted">
+                <FileJson className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium">
+                  {archiveName || "No archive selected"}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Local encrypted Browser Bridge archive
+                </div>
+              </div>
+              <Button disabled={isBusy} variant="outline" onClick={() => fileRef.current?.click()}>
+                Choose
+              </Button>
+            </div>
+          </Panel>
+        ) : null}
+
         <button
           className="inline-flex h-9 items-center gap-2 rounded-md border bg-card px-3 text-sm font-medium transition-[background-color,transform] duration-150 ease-out active:scale-[0.98] hover:bg-muted/55"
           type="button"
@@ -357,11 +437,11 @@ export function SidePanelApp() {
           {advancedOpen ? "Hide advanced" : "Advanced"}
         </button>
 
-        <Panel title="1. Select data">
-          <SectionPicker disabled={isBusy} sections={sections} onChange={setSections} />
+        <Panel title={mode === "export" ? "1. Data to transfer" : "2. Data to restore"}>
+          <SectionPicker disabled={isBusy} sections={sections} onChange={handleSectionChange} />
         </Panel>
 
-        <Panel title="2. Password">
+        <Panel title={mode === "export" ? "2. Password" : "3. Password"}>
           <input
             className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition-[border-color,box-shadow] duration-150 focus:border-primary focus:ring-2 focus:ring-ring/20"
             disabled={isBusy}
@@ -386,81 +466,79 @@ export function SidePanelApp() {
                 {allVisibleDomainsSelected ? " · all selected" : ""}
               </span>
             }
-            title="3. Cookie domains"
+            title={mode === "export" ? "3. Cookie domains" : "4. Cookie restore preview"}
           >
-            <DomainPicker
-              disabled={isBusy}
-              domains={visibleDomains}
-              selected={selectedDomains}
-              onSelectOpenTabs={selectOpenTabDomains}
-              onChange={setSelectedDomains}
+            <CookieDomainSummaryPanel
+              archiveReady={Boolean(archive)}
+              mode={mode}
+              previewReady={Boolean(lastPreview)}
+              summary={cookieSummary}
+              totalDomains={visibleDomains.length}
             />
+            {mode === "export" && !advancedOpen ? (
+              <Button
+                className="mt-3 w-full"
+                disabled={isBusy || visibleDomains.length === 0}
+                variant="outline"
+                onClick={() => setDomainReviewOpen((open) => !open)}
+              >
+                {domainReviewOpen ? "Hide cookie domains" : "Review cookie domains"}
+              </Button>
+            ) : null}
+            {advancedOpen || (mode === "export" && domainReviewOpen) ? (
+              <div className="mt-3">
+                <DomainPicker
+                  disabled={isBusy}
+                  domains={visibleDomains}
+                  selected={selectedDomains}
+                  onSelectOpenTabs={selectOpenTabDomains}
+                  onChange={handleSelectedDomainsChange}
+                />
+              </div>
+            ) : null}
+            {needsAllDomainExportAcknowledgement ? (
+              <CookieArchiveAcknowledgement
+                checked={allDomainExportAcknowledged}
+                onChange={setAllDomainExportAcknowledged}
+              />
+            ) : null}
           </Panel>
         ) : null}
 
         {mode === "import" && sections.cookies ? (
           advancedOpen ? (
-            <Panel title="4. Cookie import policy">
+            <Panel title="5. Advanced cookie restore policy">
               <CookiePolicySelector
                 disabled={isBusy}
                 policy={cookieImportPolicy}
                 onChange={handleCookieImportPolicyChange}
               />
               {cookieImportPolicy === "replace_selected_domains" ? (
-                <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-xs leading-5 text-amber-950">
-                  Replace selected domains deletes cookies only for the selected domains before
-                  importing the archive. Bookmarks and extensions are not affected.
-                </div>
+                <ReplaceDomainAcknowledgement
+                  checked={replaceImportAcknowledged}
+                  onChange={setReplaceImportAcknowledged}
+                />
               ) : null}
             </Panel>
           ) : (
             <div className="rounded-md border bg-card p-3 text-xs leading-5 text-muted-foreground">
-              Guided import keeps the default policy: overwrite matching cookies without deleting
-              unrelated data. Run Preview first; use Advanced for dry run, skip existing, or replace mode.
+              Restore matching cookies without deleting other browser data. Preview first to see
+              how many cookies will be new, updated, skipped, or require attention.
             </div>
           )
-        ) : null}
-
-        {mode === "import" ? (
-          <Panel title={sections.cookies ? "5. Archive file" : "4. Archive file"}>
-            <input
-              ref={fileRef}
-              className="hidden"
-              type="file"
-              accept="application/json,.json"
-              onChange={handleFileChange}
-            />
-            <div className="flex items-center gap-3 rounded-md border bg-card p-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-muted">
-                <FileJson className="h-4 w-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium">
-                  {archiveName || "No archive selected"}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Encrypted Browser Bridge schema v2 archive
-                </div>
-              </div>
-              <Button disabled={isBusy} variant="outline" onClick={() => fileRef.current?.click()}>
-                Choose
-              </Button>
-            </div>
-          </Panel>
         ) : null}
 
         <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-950">
           <div className="flex gap-2">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <p className="text-xs leading-5">
-              Cookies are session secrets. Archives are encrypted with your password and the
-              password is never stored. Browser Bridge requests all-host cookie access so selected
-              domains can be exported and recreated.
+              Cookies may keep websites signed in. Keep encrypted archives private and remember
+              the password; Browser Bridge cannot recover it.
             </p>
           </div>
         </div>
 
-        {lastPreview ? <PreviewPanel preview={lastPreview} /> : null}
+        {lastPreview ? <PreviewPanel advanced={advancedOpen} preview={lastPreview} /> : null}
         {lastPreview && advancedOpen ? <ExtensionInventory items={lastPreview.extensions.items} /> : null}
         <ProgressPanel progress={progress} />
         {report ? <ReportView preview={lastPreview} report={report} /> : null}
@@ -483,22 +561,18 @@ export function SidePanelApp() {
         {mode === "import" ? (
           <Button className="flex-1" disabled={isBusy} variant="outline" onClick={handlePreview}>
             {busy === "previewing" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Preview / Dry run
+            Preview cookies
           </Button>
         ) : null}
         <Button
           className="flex-1"
-          disabled={isBusy}
+          disabled={mode === "export" ? exportAction.disabled : importAction.disabled}
           onClick={mode === "export" ? handleExport : handleImport}
         >
           {busy === "exporting" || busy === "importing" ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : null}
-          {mode === "export"
-            ? "Export encrypted archive"
-            : cookieImportPolicy === "dry_run"
-              ? "Run dry run"
-              : "Run import"}
+          {mode === "export" ? exportAction.label : importAction.label}
         </Button>
       </footer>
     </main>
@@ -527,7 +601,7 @@ function GuidedStatus({
   const steps = [
     { label: "Choose action", done: true },
     {
-      label: "Select data",
+      label: mode === "export" ? "Choose cookies" : "Choose archive",
       done: !sections.cookies || selectedDomains > 0,
     },
     {
@@ -535,7 +609,7 @@ function GuidedStatus({
       done: mode === "export" ? hasPassword || archiveSaved : archiveSelected && hasPassword,
     },
     {
-      label: mode === "export" ? "Export" : "Preview / dry run",
+      label: mode === "export" ? "Create archive" : "Preview",
       done: mode === "export" ? archiveSaved : hasPreview || hasReport,
     },
     {
@@ -548,9 +622,9 @@ function GuidedStatus({
     <section className="rounded-md border bg-card p-4">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
-          <div className="text-sm font-semibold">Guided migration</div>
+          <div className="text-sm font-semibold">Guided cookie transfer</div>
           <div className="mt-1 text-xs leading-5 text-muted-foreground">
-            Local encrypted archive flow for Chrome first, with Chromium-family compatibility checks.
+            Move cookies through a local encrypted file. Cookie values stay hidden.
           </div>
         </div>
         <span className="rounded-sm bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
@@ -573,25 +647,83 @@ function GuidedStatus({
   );
 }
 
-function ModeButton({
-  active,
-  children,
-  onClick,
-}: {
-  active: boolean;
-  children: React.ReactNode;
-  onClick: () => void;
-}) {
+function TrustStrip() {
+  const items = [
+    { label: "Local file only", icon: HardDrive },
+    { label: "Encrypted", icon: LockKeyhole },
+    { label: "No cloud upload", icon: CloudOff },
+    { label: "Cookie values never shown", icon: EyeOff },
+  ];
+
   return (
-    <button
-      className={`inline-flex h-9 items-center justify-center gap-2 rounded-sm text-sm font-medium transition-[background-color,color,transform] duration-150 ease-out active:scale-[0.98] ${
-        active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-      }`}
-      type="button"
-      onClick={onClick}
-    >
-      {children}
-    </button>
+    <div className="mt-4 grid grid-cols-2 gap-2 text-[11px] text-muted-foreground sm:grid-cols-4">
+      {items.map((item) => {
+        const Icon = item.icon;
+        return (
+          <div key={item.label} className="flex items-center gap-1.5 rounded-md border bg-background px-2 py-1.5">
+            <Icon className="h-3.5 w-3.5 text-primary" />
+            <span className="truncate">{item.label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ActionChooser({
+  mode,
+  onChange,
+}: {
+  mode: Mode;
+  onChange: (mode: Mode) => void;
+}) {
+  const actions: Array<{
+    mode: Mode;
+    title: string;
+    description: string;
+    icon: typeof ArrowDownToLine;
+  }> = [
+    {
+      mode: "export",
+      title: "Export cookies from this browser",
+      description: "Create an encrypted file from the current browser profile.",
+      icon: ArrowDownToLine,
+    },
+    {
+      mode: "import",
+      title: "Import cookies into this browser",
+      description: "Preview an encrypted file, then restore cookies into this profile.",
+      icon: ArrowUpFromLine,
+    },
+  ];
+
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      {actions.map((action) => {
+        const Icon = action.icon;
+        const active = mode === action.mode;
+        return (
+          <button
+            key={action.mode}
+            className={`flex min-h-[92px] items-start gap-3 rounded-md border p-3 text-left transition-[background-color,border-color,transform] duration-150 ease-out active:scale-[0.99] ${
+              active ? "border-primary bg-primary/10" : "bg-background hover:bg-muted/55"
+            }`}
+            type="button"
+            onClick={() => onChange(action.mode)}
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-card">
+              <Icon className="h-4 w-4 text-primary" />
+            </span>
+            <span>
+              <span className="block text-sm font-semibold">{action.title}</span>
+              <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                {action.description}
+              </span>
+            </span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -615,7 +747,7 @@ function Panel({
   );
 }
 
-function PreviewPanel({ preview }: { preview: ArchivePreview }) {
+function PreviewPanel({ advanced, preview }: { advanced: boolean; preview: ArchivePreview }) {
   return (
     <div className="rounded-md border bg-card p-4">
       <div className="mb-3 text-sm font-semibold">Preview</div>
@@ -624,7 +756,8 @@ function PreviewPanel({ preview }: { preview: ArchivePreview }) {
         <Metric label="Cookie domains" value={preview.cookieDomains.length} />
         <Metric label="Extensions" value={preview.extensions.total} />
       </div>
-      <CookiePreview preview={preview} />
+      <SimpleCookiePreview preview={preview} />
+      {advanced ? <CookiePreview preview={preview} /> : null}
       <div className="mt-3 text-xs text-muted-foreground">
         {preview.extensions.installed} installed · {preview.extensions.missing} missing extensions
       </div>
@@ -632,6 +765,106 @@ function PreviewPanel({ preview }: { preview: ArchivePreview }) {
         Created {new Date(preview.createdAt).toLocaleString()} · {preview.source.browser} ·
         extension {preview.source.extensionVersion}
       </div>
+    </div>
+  );
+}
+
+function SimpleCookiePreview({ preview }: { preview: ArchivePreview }) {
+  if (!preview.sections.cookies) return null;
+  const skipped =
+    preview.cookies.skipExisting +
+    preview.cookies.expired +
+    preview.cookies.invalid +
+    preview.cookies.chromeRejectedRisk;
+
+  return (
+    <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <Metric label="New cookies" value={preview.cookies.new} />
+      <Metric label="Will update" value={preview.cookies.overwrite} />
+      <Metric label="Skipped" value={skipped} />
+      <Metric label="Will delete" value={preview.cookies.toDelete} />
+    </div>
+  );
+}
+
+function CookieDomainSummaryPanel({
+  archiveReady,
+  mode,
+  previewReady,
+  summary,
+  totalDomains,
+}: {
+  archiveReady: boolean;
+  mode: Mode;
+  previewReady: boolean;
+  summary: ReturnType<typeof summarizeCookieTransfer>;
+  totalDomains: number;
+}) {
+  const waitingForImportPreview = mode === "import" && (!archiveReady || !previewReady);
+
+  return (
+    <div className="rounded-md border bg-card p-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <Metric label="Domains" value={waitingForImportPreview ? 0 : summary.domains} />
+        <Metric label="Cookies" value={waitingForImportPreview ? 0 : summary.total} />
+        <Metric label="Session" value={waitingForImportPreview ? 0 : summary.session} />
+        <Metric label="Persistent" value={waitingForImportPreview ? 0 : summary.persistent} />
+      </div>
+      <div className="mt-3 text-xs leading-5 text-muted-foreground">
+        {mode === "export"
+          ? totalDomains === 0
+            ? "No cookies were found yet. Refresh domains after opening sites you want to transfer."
+            : "All detected cookie domains are selected by default. You can review and remove domains before creating the archive."
+          : archiveReady
+            ? previewReady
+              ? "Preview is ready. Restore keeps other browser data unless Advanced replace mode is selected."
+              : "Enter the password and preview the archive before restoring cookies."
+            : "Choose an encrypted archive to preview its cookie domains."}
+      </div>
+    </div>
+  );
+}
+
+function CookieArchiveAcknowledgement({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="mt-3 flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-950">
+      <Checkbox
+        checked={checked}
+        aria-label="Confirm encrypted cookie archive risk"
+        onCheckedChange={(value) => onChange(value === true)}
+      />
+      <span className="text-xs leading-5">
+        I understand this encrypted file may keep me signed in to websites. I will keep it
+        private and remember the password.
+      </span>
+    </div>
+  );
+}
+
+function ReplaceDomainAcknowledgement({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="mt-2 flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-950">
+      <Checkbox
+        checked={checked}
+        aria-label="Confirm replace selected domains"
+        onCheckedChange={(value) => onChange(value === true)}
+      />
+      <span className="text-xs leading-5">
+        Replace selected domains deletes cookies only for the selected domains before import.
+        Bookmarks and extensions are not affected.
+      </span>
     </div>
   );
 }

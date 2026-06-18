@@ -1,10 +1,10 @@
 # Browser Bridge Privacy Policy
 
-Browser Bridge is a local Chromium-family browser data migration tool. Chrome is the primary supported target for the current release phase.
+Browser Bridge is a local Chromium-family cookie transfer tool. Chrome is the primary supported target for the current release phase.
 
 ## Data handled
 
-The extension can read bookmarks, cookies, open tab URLs, and installed extension metadata after the user grants the required Chrome extension permissions.
+The extension can read cookies, bookmarks, open tab URLs, and installed extension metadata after the user grants the required Chrome extension permissions.
 
 Browser Bridge uses:
 
@@ -16,7 +16,7 @@ Browser Bridge uses:
 
 ## Data storage and transfer
 
-Browser Bridge does not send browser data to any server. Exports are written to a local archive file selected by the user. Archives that contain migrated data use password-based encryption with PBKDF2-SHA-256 and AES-GCM.
+Browser Bridge does not send browser data to any server. Exports are written to a local archive file selected by the user. All detected cookie domains are selected by default in the simple flow, and the user must acknowledge that the encrypted archive may keep websites signed in before creating an all-domain cookie archive. Archives that contain migrated data use password-based encryption with PBKDF2-SHA-256 and AES-GCM.
 
 Migration reports can be downloaded as local JSON files. Reports include counts, domain health, reason codes, warnings, errors, and durations. They do not include cookie values or archive passwords.
 
@@ -26,7 +26,7 @@ Archive passwords are used only in memory for encryption or decryption. Browser 
 
 ## Cookies
 
-Cookies can contain session secrets and authentication state. Browser Bridge shows cookie domains, counts, and import actions in previews, but does not display cookie values in the UI. Users choose which domains are exported or imported.
+Cookies can contain session secrets and authentication state. Browser Bridge shows cookie domains, counts, and import actions in previews, but does not display cookie values in the UI. Users can review and change which domains are exported or imported.
 
 Cookie imports are merge-based by default. The destructive `replace selected domains` mode deletes cookies only for explicitly selected domains and asks for confirmation before running.
 
@@ -36,7 +36,7 @@ Browser Bridge does not export or import saved browser passwords.
 
 ## Diagnostics
 
-Domain health diagnostics classify cookie import results as `Good`, `Partial`, `Failed`, or `Needs login`. These labels are derived from local import counts and Chrome API errors. They are intended to explain likely outcomes; websites may still require login based on their own session policies.
+Cookie restore diagnostics classify domain results into user-facing outcomes such as `Likely restored`, `May need login`, and `Not restored`. These labels are derived from local import counts and Chrome API errors. They are intended to explain likely outcomes; websites may still require login based on their own session policies.
 
 ## Contact
 

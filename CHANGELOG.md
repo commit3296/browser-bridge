@@ -4,6 +4,12 @@ All notable changes to Browser Bridge are documented here.
 
 ## Unreleased
 
+### Changed
+
+- Reworked the side panel into a cookie-first transfer flow with simple defaults and advanced controls.
+- Added in-app confirmations for all-domain cookie archives and replace-domain imports.
+- Replaced technical cookie health labels in the main report with user-facing restore outcomes.
+
 ## 0.1.3 - 2026-06-18
 
 ### Changed

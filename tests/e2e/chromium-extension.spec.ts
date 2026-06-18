@@ -58,7 +58,7 @@ test("loads extension and verifies real Chrome cookie migration policies", async
     await expect(page.getByText("Open control panel")).toBeVisible();
 
     await page.goto(`chrome-extension://${extensionId}/sidepanel.html`);
-    await expect(page.getByText("Cookie domains")).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Cookie domains/ })).toBeVisible();
 
     await seedArchiveSourceCookies(context, server.origin);
     const archiveResponse = await createCookieArchive(page, ["example.com", "github.com", "127.0.0.1"]);

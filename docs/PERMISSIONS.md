@@ -1,6 +1,6 @@
 # Permissions
 
-Browser Bridge requests only the permissions needed for local Chromium-family migration. Chrome is the primary supported target for this phase.
+Browser Bridge requests only the permissions needed for local Chromium-family cookie transfer. Chrome is the primary supported target for this phase.
 
 ## `bookmarks`
 
@@ -8,11 +8,11 @@ Used to read the bookmark tree during export and create imported bookmark folder
 
 ## `cookies`
 
-Used to read cookies for export and recreate cookies during import. Cookie values are encrypted inside the local archive and are never displayed in the UI.
+Used to read cookies for export and recreate cookies during import. Cookie values are encrypted inside the local archive and are never displayed in the UI. The simple export flow selects all detected cookie domains by default and requires explicit acknowledgement before creating an all-domain cookie archive.
 
 ## `<all_urls>`
 
-Required by Chrome's cookies API so Browser Bridge can access cookies for domains the user selects. Without host access, Chrome rejects cookie reads and writes for many sites.
+Required by Chrome's cookies API so Browser Bridge can access cookies for domains the user transfers. Without host access, Chrome rejects cookie reads and writes for many sites. Browser Bridge uses this access locally for the encrypted archive flow and does not upload cookie data.
 
 ## `tabs`
 

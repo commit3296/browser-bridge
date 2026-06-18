@@ -9,21 +9,21 @@ const sections: Array<{
   icon: typeof FolderTree;
 }> = [
   {
-    key: "bookmarks",
-    title: "Bookmarks",
-    description: "Folder tree imported into a new Browser Bridge folder.",
-    icon: FolderTree,
-  },
-  {
     key: "cookies",
     title: "Cookies",
-    description: "Session data grouped by domain, encrypted in the archive.",
+    description: "Site sign-in data grouped by domain and encrypted in the archive.",
     icon: Cookie,
   },
   {
+    key: "bookmarks",
+    title: "Also include bookmarks",
+    description: "Folder tree restored into a new Browser Bridge folder.",
+    icon: FolderTree,
+  },
+  {
     key: "extensions",
-    title: "Extensions",
-    description: "Inventory only: Chrome blocks automatic extension installs.",
+    title: "Also include extension list",
+    description: "List only: Chrome blocks automatic extension installs.",
     icon: Package,
   },
 ];

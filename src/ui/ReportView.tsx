@@ -1,9 +1,10 @@
 import { AlertTriangle, CheckCircle2, Download } from "lucide-react";
 import { Button } from "../components/ui/button";
-import { cookieHealthLabel, cookieHealthRank, summarizeCookieHealth } from "../shared/diagnostics";
+import { cookieHealthRank } from "../shared/diagnostics";
 import { createMigrationReportExport } from "../shared/report-export";
 import { ArchivePreview, CookieDomainHealth, ImportReport } from "../shared/types";
 import { downloadMigrationReport } from "./bridge-client";
+import { cookieOutcomeLabel, summarizeCookieOutcomes } from "./simpleFlow";
 
 const labels = {
   bookmarks: "Bookmarks",
@@ -21,7 +22,7 @@ export function ReportView({
   const hasErrors = Object.values(report).some(
     (value) => typeof value === "object" && "errors" in value && value.errors.length,
   );
-  const healthSummary = summarizeCookieHealth(report);
+  const outcomeSummary = summarizeCookieOutcomes(report);
 
   return (
     <div className="rounded-md border bg-card p-4">
@@ -33,7 +34,7 @@ export function ReportView({
             <CheckCircle2 className="h-4 w-4 text-primary" />
           )}
           <div className="text-sm font-semibold">
-            {report.cancelled ? "Import stopped" : "Import report"}
+            {report.cancelled ? "Restore stopped" : "Cookie restore report"}
           </div>
         </div>
         <Button
@@ -45,38 +46,47 @@ export function ReportView({
           Download report
         </Button>
       </div>
-      <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {(["good", "partial", "failed", "needs_login"] as CookieDomainHealth[]).map((health) => (
-          <div key={health} className="rounded-md border bg-background p-2">
-            <div className="text-lg font-semibold">{healthSummary[health]}</div>
-            <div className="text-xs text-muted-foreground">{cookieHealthLabel(health)}</div>
-          </div>
-        ))}
-      </div>
-      <div className="grid gap-2 sm:grid-cols-3">
-        {(["bookmarks", "cookies", "extensions"] as const).map((section) => {
-          const item = report[section];
-          if (!item.requested) return null;
-          return (
-            <div key={section} className="rounded-md border bg-background p-3">
-              <div className="text-sm font-medium">{labels[section]}</div>
-              <div className="mt-2 text-xs leading-5 text-muted-foreground">
-                {item.total} total · {item.success} success
-              </div>
-              <div className="text-xs leading-5 text-muted-foreground">
-                {item.failed} failed · {item.skipped} skipped · {item.durationMs} ms
-              </div>
-              {section === "cookies" ? (
-                <div className="mt-1 text-xs leading-5 text-muted-foreground">
-                  {item.created ?? 0} created · {item.updated ?? 0} updated ·{" "}
-                  {item.deleted ?? 0} deleted
-                </div>
-              ) : null}
-            </div>
-          );
-        })}
+      <div className="mb-3 grid gap-2 sm:grid-cols-3">
+        <div className="rounded-md border bg-background p-2">
+          <div className="text-lg font-semibold">{outcomeSummary.likelyRestored}</div>
+          <div className="text-xs text-muted-foreground">Likely restored</div>
+        </div>
+        <div className="rounded-md border bg-background p-2">
+          <div className="text-lg font-semibold">{outcomeSummary.mayNeedLogin}</div>
+          <div className="text-xs text-muted-foreground">May need login</div>
+        </div>
+        <div className="rounded-md border bg-background p-2">
+          <div className="text-lg font-semibold">{outcomeSummary.notRestored}</div>
+          <div className="text-xs text-muted-foreground">Not restored</div>
+        </div>
       </div>
       <CookieDomainBreakdown report={report} />
+      <details className="mt-3 rounded-md border bg-background p-3">
+        <summary className="cursor-pointer text-sm font-medium">Technical details</summary>
+        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+          {(["bookmarks", "cookies", "extensions"] as const).map((section) => {
+            const item = report[section];
+            if (!item.requested) return null;
+            return (
+              <div key={section} className="rounded-md border bg-card p-3">
+                <div className="text-sm font-medium">{labels[section]}</div>
+                <div className="mt-2 text-xs leading-5 text-muted-foreground">
+                  {item.total} total · {item.success} success
+                </div>
+                <div className="text-xs leading-5 text-muted-foreground">
+                  {item.failed} failed · {item.skipped} skipped · {item.durationMs} ms
+                </div>
+                {section === "cookies" ? (
+                  <div className="mt-1 text-xs leading-5 text-muted-foreground">
+                    {item.created ?? 0} created · {item.updated ?? 0} updated ·{" "}
+                    {item.deleted ?? 0} deleted
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      </details>
       <MessageList title="Warnings" messages={collectMessages(report, "warnings")} />
       <MessageList title="Errors" messages={collectMessages(report, "errors")} />
     </div>
@@ -107,7 +117,7 @@ function CookieDomainBreakdown({ report }: { report: ImportReport }) {
             <div className="flex items-start justify-between gap-2">
               <div className="font-medium">{domain}</div>
               <span className={`rounded-sm px-1.5 py-0.5 text-[11px] font-medium ${healthClass(item.health)}`}>
-                {cookieHealthLabel(item.health ?? "good")}
+                {cookieOutcomeLabel(item.health ?? "good")}
               </span>
             </div>
             <div className="mt-1 text-muted-foreground">
