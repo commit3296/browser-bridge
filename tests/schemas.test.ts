@@ -80,4 +80,43 @@ describe("archive schema", () => {
       }),
     ).not.toThrow();
   });
+
+  it("accepts older v2 bookmark payloads without Chrome syncing metadata", () => {
+    const parsed = BridgePayloadV2Schema.parse({
+      app: "browser-bridge",
+      schemaVersion: 2,
+      createdAt: "2026-06-18T00:00:00.000Z",
+      source: {
+        browser: "chrome",
+        extensionVersion: "0.1.0",
+      },
+      selection: {
+        sections: {
+          bookmarks: true,
+          cookies: false,
+          extensions: false,
+        },
+        cookieDomains: [],
+      },
+      payload: {
+        bookmarks: [
+          {
+            id: "1",
+            title: "Bookmarks Bar",
+            children: [
+              {
+                id: "2",
+                parentId: "1",
+                title: "Example",
+                url: "https://example.com/",
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(parsed.payload.bookmarks?.[0]?.syncing).toBe(false);
+    expect(parsed.payload.bookmarks?.[0]?.children?.[0]?.syncing).toBe(false);
+  });
 });

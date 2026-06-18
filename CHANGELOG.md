@@ -2,6 +2,17 @@
 
 All notable changes to Browser Bridge are documented here.
 
+## Unreleased
+
+### Changed
+
+- Updated safe dev tooling dependencies for Playwright, TypeScript, Vite, Vitest, React types, Chrome types, and Vite React plugin.
+- Kept Tailwind CSS on 3.x; Tailwind 4 remains a separate UI migration because it requires dedicated side panel visual QA.
+
+### Fixed
+
+- Preserved backward compatibility for older v2 bookmark archives by defaulting missing Chrome `BookmarkTreeNode.syncing` metadata to `false`.
+
 ## 0.1.1 - 2026-06-18
 
 ### Changed
