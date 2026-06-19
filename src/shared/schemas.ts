@@ -1,4 +1,10 @@
 import { z } from "zod";
+import {
+  ARCHIVE_IV_BYTES,
+  ARCHIVE_KDF_ITERATIONS,
+  ARCHIVE_MAX_CIPHERTEXT_BYTES,
+  ARCHIVE_SALT_BYTES,
+} from "./archive-format";
 
 const SectionSelectionSchema = z.object({
   bookmarks: z.boolean(),
@@ -99,14 +105,17 @@ export const EncryptedArchiveV2Schema = z.object({
   kdf: z.object({
     name: z.literal("PBKDF2"),
     hash: z.literal("SHA-256"),
-    iterations: z.number().int().positive(),
+    iterations: z.literal(ARCHIVE_KDF_ITERATIONS),
   }),
   cipher: z.object({
     name: z.literal("AES-GCM"),
   }),
-  salt: z.string().min(1),
-  iv: z.string().min(1),
-  ciphertext: z.string().min(1),
+  salt: base64BytesSchema(ARCHIVE_SALT_BYTES, "salt"),
+  iv: base64BytesSchema(ARCHIVE_IV_BYTES, "iv"),
+  ciphertext: base64StringSchema("ciphertext").refine(
+    (value) => decodedBase64ByteLength(value) <= ARCHIVE_MAX_CIPHERTEXT_BYTES,
+    "Archive ciphertext is too large.",
+  ),
 });
 
 export const BridgeRequestSchema = z.discriminatedUnion("type", [
@@ -150,3 +159,28 @@ export const BridgeRequestSchema = z.discriminatedUnion("type", [
     password: z.string().min(1),
   }),
 ]);
+
+function base64BytesSchema(byteLength: number, label: string) {
+  return base64StringSchema(label).refine(
+    (value) => decodedBase64ByteLength(value) === byteLength,
+    `Archive ${label} must decode to ${byteLength} bytes.`,
+  );
+}
+
+function base64StringSchema(label: string) {
+  return z
+    .string()
+    .min(1)
+    .refine((value) => isStrictBase64(value), `Archive ${label} must be strict base64.`);
+}
+
+function isStrictBase64(value: string) {
+  if (value.length === 0 || value.length % 4 !== 0) return false;
+  return /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value);
+}
+
+function decodedBase64ByteLength(value: string) {
+  if (!isStrictBase64(value)) return Number.POSITIVE_INFINITY;
+  const padding = value.endsWith("==") ? 2 : value.endsWith("=") ? 1 : 0;
+  return (value.length / 4) * 3 - padding;
+}

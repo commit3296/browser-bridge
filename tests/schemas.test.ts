@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ARCHIVE_KDF_ITERATIONS } from "../src/shared/archive-format";
 import { BridgePayloadV2Schema, EncryptedArchiveV2Schema } from "../src/shared/schemas";
 
 describe("archive schema", () => {
@@ -10,6 +11,23 @@ describe("archive schema", () => {
         createdAt: "2026-06-12T00:00:00.000Z",
         payload: {},
       }),
+    ).toThrow();
+  });
+
+  it("rejects encrypted archives with unsafe envelope parameters", () => {
+    const archive = validEncryptedArchive();
+
+    expect(() =>
+      EncryptedArchiveV2Schema.parse({
+        ...archive,
+        kdf: { ...archive.kdf, iterations: ARCHIVE_KDF_ITERATIONS + 1 },
+      }),
+    ).toThrow();
+
+    expect(() => EncryptedArchiveV2Schema.parse({ ...archive, salt: "AAAA" })).toThrow();
+    expect(() => EncryptedArchiveV2Schema.parse({ ...archive, iv: "AAAA" })).toThrow();
+    expect(() =>
+      EncryptedArchiveV2Schema.parse({ ...archive, ciphertext: "not strict base64" }),
     ).toThrow();
   });
 
@@ -120,3 +138,22 @@ describe("archive schema", () => {
     expect(parsed.payload.bookmarks?.[0]?.children?.[0]?.syncing).toBe(false);
   });
 });
+
+function validEncryptedArchive() {
+  return {
+    app: "browser-bridge",
+    schemaVersion: 2,
+    createdAt: "2026-06-12T00:00:00.000Z",
+    kdf: {
+      name: "PBKDF2",
+      hash: "SHA-256",
+      iterations: ARCHIVE_KDF_ITERATIONS,
+    },
+    cipher: {
+      name: "AES-GCM",
+    },
+    salt: "AAAAAAAAAAAAAAAAAAAAAA==",
+    iv: "AAAAAAAAAAAAAAAA",
+    ciphertext: "AAAAAAAAAAAAAAAAAAAAAA==",
+  };
+}

@@ -1,0 +1,4 @@
+export const ARCHIVE_KDF_ITERATIONS = 250_000;
+export const ARCHIVE_SALT_BYTES = 16;
+export const ARCHIVE_IV_BYTES = 12;
+export const ARCHIVE_MAX_CIPHERTEXT_BYTES = 50 * 1024 * 1024;

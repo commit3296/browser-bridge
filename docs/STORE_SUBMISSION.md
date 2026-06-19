@@ -56,7 +56,7 @@ Before upload, manually inspect every image and confirm:
 - Paste permission justifications from [PERMISSIONS.md](PERMISSIONS.md).
 - Confirm data handling states that Browser Bridge has no remote transfer and does not migrate saved passwords.
 - Confirm screenshots are the generated `1280x800` PNG files listed above.
-- Confirm the production side panel does not expose QA diagnostics without a deliberate `?qa=1` local testing URL.
+- Confirm the production side panel does not expose QA diagnostics.
 - Confirm archive/report JSON do not contain cookie values or archive passwords.
 
 ## Manual QA Still Required

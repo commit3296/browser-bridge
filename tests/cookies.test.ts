@@ -38,6 +38,35 @@ describe("cookie reconstruction", () => {
     expect(details).not.toHaveProperty("domain");
   });
 
+  it("allows localhost host-only cookies", () => {
+    const cookie: ExportedCookie = {
+      ...baseCookie,
+      domain: "localhost",
+      hostOnly: true,
+      secure: false,
+      sourceScheme: "http",
+    };
+
+    expect(getCookiePreflightIssue(cookie)).toBeNull();
+    expect(buildCookieSetDetails(cookie)).toMatchObject({
+      url: "http://localhost/",
+      name: "sid",
+    });
+    expect(buildCookieSetDetails(cookie)).not.toHaveProperty("domain");
+  });
+
+  it("rejects localhost domain cookies because Chrome expects host-only local cookies", () => {
+    const issue = getCookiePreflightIssue({
+      ...baseCookie,
+      domain: "localhost",
+      hostOnly: false,
+      secure: false,
+      sourceScheme: "http",
+    });
+
+    expect(issue?.code).toBe("invalid_domain");
+  });
+
   it("flags expired cookies before Chrome rejects them", () => {
     const issue = getCookiePreflightIssue({
       ...baseCookie,

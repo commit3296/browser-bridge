@@ -64,6 +64,12 @@ describe("background cookie import integration", () => {
       created: 1,
       updated: 1,
     });
+    expect(response.report.cookies.domains?.["example.com"]).toMatchObject({
+      total: 2,
+      success: 2,
+      created: 1,
+      updated: 1,
+    });
   });
 
   it("skip existing only sets cookies that are not already present", async () => {
@@ -132,9 +138,27 @@ describe("background cookie import integration", () => {
       success: 2,
       failed: 1,
     });
+    expect(response.report.cookies.domains?.["example.com"]).toMatchObject({
+      total: 3,
+      success: 2,
+      failed: 1,
+    });
     expect(response.report.cookies.errors[0]).toContain("chrome_rejected");
     expect(response.report.cookies.domains?.["example.com"].errors[0]).toContain("bad");
     expect(response.report.cookies.domains?.["example.com"].health).toBe("partial");
+  });
+
+  it("rejects QA diagnostics when the service is not in development mode", async () => {
+    const browser = createMockBrowser();
+    const service = createBridgeService({ browser, allowQaDiagnostics: false });
+
+    const response = await service.handleMessage({ type: "CREATE_QA_COOKIES" });
+
+    expect(response).toMatchObject({
+      ok: false,
+      error: "QA diagnostics are only available in development builds.",
+    });
+    expect(browser.cookies.set).not.toHaveBeenCalled();
   });
 
   it("exports report JSON without cookie values", async () => {

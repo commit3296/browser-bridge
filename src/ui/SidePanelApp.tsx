@@ -83,9 +83,7 @@ export function SidePanelApp() {
   const [domainReviewOpen, setDomainReviewOpen] = useState(false);
   const [allDomainExportAcknowledged, setAllDomainExportAcknowledged] = useState(false);
   const [replaceImportAcknowledged, setReplaceImportAcknowledged] = useState(false);
-  const [advancedOpen, setAdvancedOpen] = useState(
-    () => new URLSearchParams(window.location.search).get("qa") === "1",
-  );
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const operationIdRef = useRef(createOperationId());
   const fileRef = useRef<HTMLInputElement>(null);
   const passwordCopyTimeoutRef = useRef<number | null>(null);
@@ -146,8 +144,7 @@ export function SidePanelApp() {
         ? importAction.disabledReason
         : previewAction.disabledReason || importAction.disabledReason
       : "";
-  const showQaDiagnostics =
-    import.meta.env.DEV || new URLSearchParams(window.location.search).get("qa") === "1";
+  const showQaDiagnostics = import.meta.env.DEV;
   const showStandaloneCookieWarning =
     sections.cookies && !(mode === "export" && needsAllDomainExportAcknowledgement);
 

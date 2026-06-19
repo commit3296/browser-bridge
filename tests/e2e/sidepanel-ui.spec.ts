@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 const extensionPath = resolve(".output/chrome-mv3");
-const chromeExecutable = process.env.PLAYWRIGHT_CHROME_EXECUTABLE;
+const chromeExecutable = process.env.PLAYWRIGHT_CHROME_EXECUTABLE || chromium.executablePath();
 const archivePassword = "Correct horse battery staple 2026!";
 
 test.skip(
@@ -119,7 +119,7 @@ for (const viewport of [
       const extensionId = await getExtensionId(context, userDataDir);
       const page = await context.newPage();
       await page.setViewportSize(viewport);
-      await page.goto(`chrome-extension://${extensionId}/sidepanel.html?qa=1`);
+      await page.goto(`chrome-extension://${extensionId}/sidepanel.html`);
 
       await expect(page.getByRole("heading", { name: "Browser Bridge" })).toBeVisible();
       await expect(page.getByText(/Step \d/)).toHaveCount(0);
@@ -156,10 +156,13 @@ for (const viewport of [
       await page.getByPlaceholder("Archive password").fill(archivePassword);
       await expect(page.getByRole("button", { name: "Restore cookies", exact: true })).toBeDisabled();
       await page.getByRole("button", { name: "Preview cookies" }).click();
+      await expect(page.getByText("Update").first()).toBeVisible();
+      await expect(page.getByText("Attention").first()).toBeVisible();
+      await expect(page.getByRole("columnheader", { name: "Domain" })).toHaveCount(0);
+      await page.getByRole("button", { name: "Show advanced settings" }).click();
       await expect(page.getByRole("columnheader", { name: "Domain" })).toBeVisible();
       await expect(page.getByRole("columnheader", { name: "Overwrite" })).toBeVisible();
       await expect(page.getByText("New").first()).toBeVisible();
-      await expect(page.getByText("Attention").first()).toBeVisible();
       await page.screenshot({
         path: `test-results/sidepanel-preview-${viewport.name}.png`,
         fullPage: true,
