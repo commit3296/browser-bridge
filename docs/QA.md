@@ -29,7 +29,7 @@
 
 ## Dev Diagnostics
 
-- Open the side panel with `?qa=1` or use a dev build to show QA diagnostics.
+- Use a dev build to show QA diagnostics. Production builds do not expose them.
 - Use `Create test cookies` to create Browser Bridge test cookies only.
 - Use `Refresh counts` to list domains, counts, names, path/security flags, and no values.
 - Use `Quick dry run` to run a QA dry-run preview.

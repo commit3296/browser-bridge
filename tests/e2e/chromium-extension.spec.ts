@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 const extensionPath = resolve(".output/chrome-mv3");
-const chromeExecutable = process.env.PLAYWRIGHT_CHROME_EXECUTABLE;
+const chromeExecutable = process.env.PLAYWRIGHT_CHROME_EXECUTABLE || chromium.executablePath();
 const archivePassword = "Correct horse battery staple 2026!";
 const launchArgs = [
   "--no-sandbox",
@@ -110,7 +110,7 @@ test("exports and imports bookmarks in a real Chrome profile", async () => {
       });
     });
     const page = await context.newPage();
-    await page.goto(`chrome-extension://${extensionId}/sidepanel.html?qa=1`);
+    await page.goto(`chrome-extension://${extensionId}/sidepanel.html`);
 
     await page.evaluate(async () => {
       const folder = await chrome.bookmarks.create({

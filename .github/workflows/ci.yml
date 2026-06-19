@@ -35,10 +35,17 @@ jobs:
       - run: npm run build:firefox
       - name: Resolve extension test browser
         run: |
-          CHROME="$(command -v chromium || command -v chromium-browser || true)"
+          CHROME="$(node -e "const { existsSync } = require('node:fs'); const { chromium } = require('playwright'); const path = chromium.executablePath(); if (existsSync(path)) process.stdout.write(path)")"
           if [ -z "$CHROME" ]; then
             npx playwright install chromium
             CHROME="$(node -e "const { chromium } = require('playwright'); process.stdout.write(chromium.executablePath())")"
+          fi
+          if [ ! -x "$CHROME" ]; then
+            CHROME="$(command -v chromium || command -v chromium-browser || true)"
+          fi
+          if [ -z "$CHROME" ]; then
+            echo "No Chromium executable found for extension e2e." >&2
+            exit 1
           fi
           echo "PLAYWRIGHT_CHROME_EXECUTABLE=$CHROME" >> "$GITHUB_ENV"
           "$CHROME" --version

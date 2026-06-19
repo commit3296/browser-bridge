@@ -163,7 +163,6 @@ export function buildCookieSetDetails(cookie: ExportedCookie): chrome.cookies.Se
     throw new Error(preflightIssue.message);
   }
 
-  const host = normalizeCookieDomain(cookie.domain);
   const path = cookie.path || "/";
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   const details: chrome.cookies.SetDetails = {
@@ -232,6 +231,12 @@ export function getCookiePreflightIssue(cookie: ExportedCookie): CookieImportIss
   try {
     const path = cookie.path?.startsWith("/") ? cookie.path : `/${cookie.path || ""}`;
     const url = new URL(`${getCookieScheme(cookie)}://${host}${path}`);
+    if (url.hostname === "localhost") {
+      if (!cookie.hostOnly) {
+        return createCookieIssue(cookie, "invalid_domain", "Localhost cookies must be host-only.");
+      }
+      return null;
+    }
     if (!url.hostname.includes(".")) {
       return createCookieIssue(cookie, "invalid_domain", "Cookie domain must be a registrable host.");
     }

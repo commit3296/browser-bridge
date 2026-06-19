@@ -65,14 +65,20 @@ export type BridgeProgressEmitter = (event: ProgressEvent) => Promise<void> | vo
 export function createBridgeService({
   browser,
   emitProgress: emitProgressEvent = () => undefined,
+  allowQaDiagnostics = import.meta.env.DEV,
 }: {
   browser: BridgeBrowser;
   emitProgress?: BridgeProgressEmitter;
+  allowQaDiagnostics?: boolean;
 }) {
   const cancelledOperations = new Set<string>();
 
   async function handleMessage(rawRequest: unknown): Promise<BridgeResponse> {
     const request = BridgeRequestSchema.parse(rawRequest) as BridgeRequest;
+
+    if (isQaRequest(request) && !allowQaDiagnostics) {
+      return { ok: false, error: "QA diagnostics are only available in development builds." };
+    }
 
     if (request.type === "GET_COOKIE_DOMAINS") {
       const cookies = (await browser.cookies.getAll({})).map(serializeCookie);
@@ -529,6 +535,7 @@ export function createBridgeService({
         cursor += 1;
         const item = importItems[index];
         const domainReport = getCookieDomainReport(report, item.domain);
+        domainReport.total += 1;
 
         if (item.action === "skip_invalid" && item.issue) {
           report.cookies.skipped += 1;
@@ -563,7 +570,9 @@ export function createBridgeService({
       const remaining = importItems.length - completed;
       report.cookies.skipped += remaining;
       for (const item of importItems.slice(completed)) {
-        getCookieDomainReport(report, item.domain).skipped += 1;
+        const domainReport = getCookieDomainReport(report, item.domain);
+        domainReport.total += 1;
+        domainReport.skipped += 1;
       }
     }
 
@@ -819,4 +828,13 @@ export function createBridgeService({
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
   return String(error);
+}
+
+function isQaRequest(request: BridgeRequest) {
+  return (
+    request.type === "CREATE_QA_COOKIES" ||
+    request.type === "GET_QA_COOKIE_SUMMARY" ||
+    request.type === "CLEAR_QA_COOKIES" ||
+    request.type === "QA_DRY_RUN_PREVIEW"
+  );
 }

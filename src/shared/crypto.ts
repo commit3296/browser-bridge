@@ -1,18 +1,19 @@
 import { BridgePayloadV2, EncryptedArchiveV2 } from "./types";
 import { BridgePayloadV2Schema, EncryptedArchiveV2Schema } from "./schemas";
-
-const ITERATIONS = 250_000;
-const SALT_BYTES = 16;
-const IV_BYTES = 12;
+import {
+  ARCHIVE_IV_BYTES,
+  ARCHIVE_KDF_ITERATIONS,
+  ARCHIVE_SALT_BYTES,
+} from "./archive-format";
 
 export async function encryptPayload(
   payload: BridgePayloadV2,
   password: string,
 ): Promise<EncryptedArchiveV2> {
   const normalized = BridgePayloadV2Schema.parse(payload);
-  const salt = crypto.getRandomValues(new Uint8Array(SALT_BYTES));
-  const iv = crypto.getRandomValues(new Uint8Array(IV_BYTES));
-  const key = await deriveKey(password, toArrayBuffer(salt), ITERATIONS);
+  const salt = crypto.getRandomValues(new Uint8Array(ARCHIVE_SALT_BYTES));
+  const iv = crypto.getRandomValues(new Uint8Array(ARCHIVE_IV_BYTES));
+  const key = await deriveKey(password, toArrayBuffer(salt), ARCHIVE_KDF_ITERATIONS);
   const encoded = new TextEncoder().encode(JSON.stringify(normalized));
   const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoded);
 
@@ -23,7 +24,7 @@ export async function encryptPayload(
     kdf: {
       name: "PBKDF2",
       hash: "SHA-256",
-      iterations: ITERATIONS,
+      iterations: ARCHIVE_KDF_ITERATIONS,
     },
     cipher: {
       name: "AES-GCM",
