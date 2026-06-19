@@ -4,6 +4,20 @@ All notable changes to Browser Bridge are documented here.
 
 ## Unreleased
 
+## 0.1.6 - 2026-06-19
+
+### Changed
+
+- Hardened encrypted archive envelope validation with fixed v2 KDF parameters and strict base64/size checks.
+- Stabilized extension e2e by running against full Playwright Chromium instead of Chrome/headless shell defaults.
+- Restricted QA diagnostics to development builds only; production builds no longer expose the query-flag diagnostics path.
+
+### Fixed
+
+- Corrected per-domain cookie totals in real import reports.
+- Allowed valid `localhost` host-only cookies during cookie preflight.
+- Made migration report export allow-list based so accidental runtime fields cannot leak into report JSON.
+
 ## 0.1.5 - 2026-06-19
 
 ### Changed
